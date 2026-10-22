@@ -1314,7 +1314,6 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     }
     if (state === 'tracking' && trk) stepTracking(now);
     draw(now);
-    recFrame(now);
     requestAnimationFrame(loop);
   }
 
@@ -1606,9 +1605,12 @@ Field definitions are in the "definitions" section of the JSON.`;
       rec = null; recUI();
     };
     mr.start(1000);
+    // Own steady frame clock, so the video keeps a constant 30 fps whatever the screen refresh rate.
+    rec.timer = setInterval(() => recFrame(performance.now()), 1000 / REC_FPS);
+    rec.ui = setInterval(recUI, 500);
     recUI();
   }
-  function stopRec() { if (rec && rec.mr.state !== 'inactive') rec.mr.stop(); }
+  function stopRec() { if (!rec) return; clearInterval(rec.timer); clearInterval(rec.ui); if (rec.mr.state !== 'inactive') rec.mr.stop(); }
   // Seconds into the current recording, for linking data rows to the video.
   const videoT = t => rec ? Math.round((t - rec.t0) / 10) / 100 : null;
   function recFrame(now) {
@@ -1620,7 +1622,6 @@ Field definitions are in the "definitions" section of the JSON.`;
     recCtx.font = '500 11px "IBM Plex Mono", Consolas, monospace'; recCtx.textBaseline = 'bottom'; recCtx.textAlign = 'left';
     recCtx.fillStyle = 'rgba(0,0,0,.6)'; recCtx.fillRect(4, REC_H - 20, 70, 16);
     recCtx.fillStyle = '#ec6a52'; recCtx.fillText(`● ${((now - rec.t0) / 1000).toFixed(1)}s`, 8, REC_H - 6);
-    if (Math.floor(now / 500) !== Math.floor((now - 17) / 500)) recUI();
   }
   $('rec').addEventListener('click', () => { rec ? stopRec() : startRec(); });
   $('rec-dl').addEventListener('click', async () => {
