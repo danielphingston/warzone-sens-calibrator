@@ -33,10 +33,10 @@ body { font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
 a { color: var(--accent); }
 .wrap {
   max-width: 1120px; margin: 0 auto;
-  padding-block: 28px 56px;
+  padding-block: 16px 56px;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  display: grid; gap: 22px;
+  display: grid; gap: 14px;
 }
 header { display: grid; gap: 6px; }
 .eyebrow { font-family: var(--font-data); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
@@ -45,7 +45,7 @@ h2 { font: 600 18px var(--font-display); letter-spacing: .03em; margin: 0; }
 .lede { color: var(--muted); max-width: 70ch; margin: 0; }
 
 /* Every field is the same three rows (label / 38px control / hint), so controls line up whether or not a hint exists. */
-.setup { display: grid; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+.setup { display: grid; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
 .setup-row, details.adv .adv-row { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: flex-start; }
 .field { display: grid; grid-template-rows: 16px 38px 16px; gap: 4px; min-width: 0; }
 .field label, .field .label { font-size: 12px; line-height: 16px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; font-family: var(--font-data); white-space: nowrap; }
@@ -56,7 +56,13 @@ h2 { font: 600 18px var(--font-display); letter-spacing: .03em; margin: 0; }
 .field label.toggle input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
 .field label.toggle:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 .field select { font-family: var(--font-body); font-size: 14px; font-weight: 600; }
-.setup-foot { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 14px; }
+/* Compact page top: title line, one control bar, then the range — Settings unfolds below the bar. */
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
+header.top h1 { font-size: clamp(22px, 2.6vw, 30px); }
+.setup .bar-actions { align-self: flex-start; margin-top: 20px; margin-left: auto; }
+#settings-toggle[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+.settings { display: grid; gap: 14px; border-top: 1px solid var(--line); padding-top: 14px; }
+.about { display: grid; gap: 6px; }
 .field input:focus-visible, .field select:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .field .hint { font: 12px/16px var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .seg { box-sizing: border-box; height: 38px; display: flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: var(--panel-2); }
@@ -95,7 +101,7 @@ details.adv .adv-row { padding-top: 12px; }
 .range-bar .you { position: absolute; top: -4px; width: 3px; height: 16px; background: var(--accent); }
 .range-scale { display: flex; justify-content: space-between; font: 11px var(--font-data); color: var(--muted); }
 
-.arena-wrap { position: relative; width: 100%; max-width: calc(72vh * 16 / 9); margin: 0 auto; aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #0a0f12; }
+.arena-wrap { position: relative; width: 100%; max-width: max(480px, calc((100vh - 230px) * 16 / 9)); margin: 0 auto; aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #0a0f12; }
 canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 .arena-wrap:fullscreen { max-width: none; width: 100%; height: 100%; aspect-ratio: auto; border: 0; border-radius: 0; }
 .overlay { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; background: rgba(8, 12, 14, .72); cursor: pointer; }
@@ -144,12 +150,12 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 </head>
 <body>
 <main class="wrap">
-  <header>
-    <div class="eyebrow" id="eyebrow">Call of Duty sensitivity scale · 0.0066° per count</div>
+  <header class="top">
     <h1>Warzone Sens Calibrator</h1>
-    <p class="lede">Three drills, one number. Each drill tests a spread of sens values in shuffled order and scores how well you aim with each. A curve through those scores finds your peak, kept inside a range your arm and mousepad can actually handle. You can switch the scoring method below; each one explains what it measures and why.</p>
+    <div class="eyebrow" id="eyebrow">Call of Duty sensitivity scale · 0.0066° per count</div>
   </header>
 
+  <!-- The essentials sit in one bar right above the range; everything else folds into Settings. -->
   <section class="setup" aria-label="Setup">
    <div class="setup-row">
     <div class="field"><span class="label" id="game-label">Game</span>
@@ -167,6 +173,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
         <input type="radio" name="mode" id="m-micro" value="micro"><label for="m-micro">Micro-adjust</label>
         <input type="radio" name="mode" id="m-practice" value="practice"><label for="m-practice">Practice</label>
       </div>
+      <span class="hint" id="time-est"></span>
     </div>
     <div class="field" id="pdrill-field" hidden><label for="pdrill">Practice drill</label>
       <select id="pdrill">
@@ -176,65 +183,68 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
       </select>
       <span class="hint">unlimited · fixed sens</span>
     </div>
-    <div class="field"><label for="method">Scoring method</label>
-      <select id="method">
-        <option value="throughput">Fitts throughput (recommended)</option>
-        <option value="precision">Precision-first</option>
-        <option value="reach">Reach matching (legacy)</option>
-      </select>
-    </div>
-    <div class="field"><label for="search">Search</label>
-      <select id="search">
-        <option value="bracket">Fixed bracket · 10 blocks</option>
-        <option value="bayes">Bayesian adaptive · faster</option>
-      </select>
-    </div>
     <div class="field"><label for="dpi">Mouse DPI</label><input id="dpi" type="number" min="100" max="32000" step="50" value="5200"></div>
     <div class="field"><label for="sens0">Center sens</label><input id="sens0" type="number" min="0.001" max="100" step="0.01" value="1.5"><span class="hint" id="sens0-hint"></span></div>
     <div class="field"><label for="cm">cm / 360</label><input id="cm" type="number" min="2" max="200" step="0.5" value="17.8"><span class="hint">sets sens too</span></div>
-    <div class="field"><label for="fov">FOV</label><input id="fov" type="number" min="60" max="120" step="1" value="120"><span class="hint" id="fov-hint"></span></div>
-    <div class="field"><span class="label">Reaction time</span>
-      <label class="toggle" for="rt"><input id="rt" type="checkbox" checked><span>Exclude from scores</span></label>
-      <span class="hint" id="rt-hint"></span>
+    <div class="actions bar-actions">
+      <button id="settings-toggle" type="button" aria-expanded="false" aria-controls="settings">Settings</button>
+      <button id="start" class="primary" type="button">Start</button>
     </div>
    </div>
-    <details class="adv">
-      <summary>More settings</summary>
-      <div class="adv-row">
-        <div class="field"><label for="per">Targets / block</label><input id="per" type="number" min="6" max="30" step="1" value="10"><span class="hint">first 2 are warm-up</span></div>
-        <div class="field"><label for="gap">Next target</label><input id="gap" type="number" min="150" max="1500" step="50" value="350"><span class="hint">ms delay</span></div>
-        <div class="field"><label for="pad">Mousepad width</label><input id="pad" type="number" min="20" max="120" step="1" value="45"><span class="hint">cm</span></div>
-        <div class="field"><label for="fast">Fastest allowed</label><input id="fast" type="number" min="4" max="40" step="1" value="12"><span class="hint">cm/360</span></div>
-        <div class="field"><span class="label">Ergonomic limits</span>
-          <label class="toggle" for="ergo"><input id="ergo" type="checkbox" checked><span>Enforce</span></label>
-          <span class="hint">off = 2–200 cm/360</span>
-        </div>
-        <div class="field"><label for="tspeed">Tracking target</label>
-          <select id="tspeed">
-            <option value="calm">Calm · 6–18°/s</option>
-            <option value="real" selected>Realistic · 8–28°/s</option>
-            <option value="hard">Hard · 12–40°/s</option>
-          </select>
-        </div>
+
+   <div class="status">
+     <span class="chip"><span class="dot" id="raw-dot"></span><span id="raw-text">Raw input: not tested yet</span></span>
+     <span class="chip"><span class="dot" id="scale-dot"></span><span id="scale-text">Mouse scaling: not checked</span></span>
+     <span class="chip" id="summary-chip"></span>
+     <span class="touch-note">This needs a mouse and a desktop browser.</span>
+   </div>
+
+   <div class="settings" id="settings" hidden>
+    <div class="setup-row">
+      <div class="field"><label for="method">Scoring method</label>
+        <select id="method">
+          <option value="throughput">Fitts throughput (recommended)</option>
+          <option value="precision">Precision-first</option>
+          <option value="reach">Reach matching (legacy)</option>
+        </select>
       </div>
-    </details>
-    <div class="setup-foot">
-      <div class="status">
-        <span class="chip"><span class="dot" id="raw-dot"></span><span id="raw-text">Raw input: not tested yet</span></span>
-        <span class="chip"><span class="dot" id="scale-dot"></span><span id="scale-text">Mouse scaling: not checked</span></span>
-        <span class="chip" id="time-est"></span>
-        <span class="touch-note">This needs a mouse and a desktop browser.</span>
+      <div class="field"><label for="search">Search</label>
+        <select id="search">
+          <option value="bracket">Fixed bracket · 10 blocks</option>
+          <option value="bayes">Bayesian adaptive · faster</option>
+        </select>
       </div>
-      <div class="actions">
-        <button id="check" type="button">Check mouse scaling</button>
-        <button id="start" class="primary" type="button">Start</button>
+      <div class="field"><label for="fov">FOV</label><input id="fov" type="number" min="60" max="120" step="1" value="120"><span class="hint" id="fov-hint"></span></div>
+      <div class="field"><span class="label">Reaction time</span>
+        <label class="toggle" for="rt"><input id="rt" type="checkbox" checked><span>Exclude from scores</span></label>
+        <span class="hint" id="rt-hint"></span>
+      </div>
+      <div class="field"><span class="label">Ergonomic limits</span>
+        <label class="toggle" for="ergo"><input id="ergo" type="checkbox" checked><span>Enforce</span></label>
+        <span class="hint">off = 2–200 cm/360</span>
       </div>
     </div>
-  </section>
-
-  <section class="method-info" aria-label="How the selected method works">
-    <div id="method-card"></div>
-    <div id="range-card"></div>
+    <div class="setup-row">
+      <div class="field"><label for="per">Targets / block</label><input id="per" type="number" min="6" max="30" step="1" value="10"><span class="hint">first 2 are warm-up</span></div>
+      <div class="field"><label for="gap">Next target</label><input id="gap" type="number" min="150" max="1500" step="50" value="350"><span class="hint">ms delay</span></div>
+      <div class="field"><label for="pad">Mousepad width</label><input id="pad" type="number" min="20" max="120" step="1" value="45"><span class="hint">cm</span></div>
+      <div class="field"><label for="fast">Fastest allowed</label><input id="fast" type="number" min="4" max="40" step="1" value="12"><span class="hint">cm/360</span></div>
+      <div class="field"><label for="tspeed">Tracking target</label>
+        <select id="tspeed">
+          <option value="calm">Calm · 6–18°/s</option>
+          <option value="real" selected>Realistic · 8–28°/s</option>
+          <option value="hard">Hard · 12–40°/s</option>
+        </select>
+      </div>
+      <div class="actions bar-actions">
+        <button id="check" type="button">Check mouse scaling</button>
+      </div>
+    </div>
+    <section class="method-info" aria-label="How the selected method works">
+      <div id="method-card"></div>
+      <div id="range-card"></div>
+    </section>
+   </div>
   </section>
 
   <div class="arena-wrap">
@@ -266,6 +276,11 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
         </div>
       </div>
     </div>
+  </section>
+
+  <section class="about" aria-label="About">
+    <h2>How it works</h2>
+    <p class="lede">Three drills, one number. Each drill tests a spread of sens values and scores how well you aim with each. A curve through those scores finds your peak, kept inside a range your arm and mousepad can handle unless you turn the limits off. Open Settings to change the scoring method; each one explains what it measures and why.</p>
   </section>
 
   <section class="how" aria-label="How the drills work">
@@ -473,7 +488,8 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     $('rt-hint').textContent = cfg.excludeRT ? 'times start at movement' : 'times start at target';
     renderGame();
     const mins = cfg.search === 'bayes' ? { full: '5–7', flick: '2', track: '1.5–2', micro: '1.5–2' }[cfg.mode] : { full: 8, flick: 3, track: 2.5, micro: 2.5 }[cfg.mode];
-    $('time-est').textContent = cfg.mode === 'practice' ? 'Unlimited · Esc to stop' : `About ${mins} min`;
+    $('time-est').textContent = cfg.mode === 'practice' ? 'unlimited · Esc to stop' : `about ${mins} min`;
+    $('summary-chip').textContent = `${METHODS[cfg.method].name} · ${cfg.search === 'bayes' ? 'Bayesian search' : 'fixed bracket'} · reaction time ${cfg.excludeRT ? 'excluded' : 'included'} · limits ${cfg.enforceErgo ? 'on' : 'off'}`;
     persist();
     renderMethod();
   }
@@ -981,7 +997,16 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     if (['ready', 'intro', 'paused', 'between', 'measureReady'].includes(state)) lock();
   });
   canvas.addEventListener('click', () => { if (!locked && state !== 'idle' && state !== 'done') lock(); });
-  $('start').addEventListener('click', () => { startSession(); lock(); });
+  $('start').addEventListener('click', () => { startSession(); arenaWrap.scrollIntoView({ block: 'center' }); lock(); });
+  // Settings panel: closed by default so the range sits right under the control bar; open state is remembered.
+  function setSettingsOpen(open) {
+    $('settings').hidden = !open;
+    $('settings-toggle').setAttribute('aria-expanded', String(open));
+    $('settings-toggle').textContent = open ? 'Hide settings' : 'Settings';
+    try { localStorage.setItem('wzcal-settings-open', open ? '1' : '0'); } catch (e) {}
+  }
+  $('settings-toggle').addEventListener('click', () => setSettingsOpen($('settings').hidden));
+  try { if (localStorage.getItem('wzcal-settings-open') === '1') setSettingsOpen(true); } catch (e) {}
   $('check').addEventListener('click', () => { readInputs(); state = 'measureReady'; updateOverlay(); lock(); });
 
   function finishMeasure() {
