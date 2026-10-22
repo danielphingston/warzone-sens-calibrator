@@ -268,7 +268,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
       <div class="data-head">
         <h2>Export for AI</h2>
         <div class="actions">
-          <button id="clear" type="button">Clear saved results</button>
+          <button id="clear" type="button">Clear results</button>
           <button id="export" class="primary" type="button">Build export</button>
         </div>
       </div>
@@ -1531,8 +1531,8 @@ Field definitions are in the "definitions" section of the JSON.`;
   });
   let clearArmed = false;
   $('clear').addEventListener('click', () => {
-    if (!clearArmed) { clearArmed = true; $('clear').textContent = 'Click again to clear'; setTimeout(() => { clearArmed = false; $('clear').textContent = 'Clear saved results'; }, 3000); return; }
-    clearArmed = false; $('clear').textContent = 'Clear saved results';
+    if (!clearArmed) { clearArmed = true; $('clear').textContent = 'Click to confirm'; setTimeout(() => { clearArmed = false; $('clear').textContent = 'Clear results'; }, 3000); return; }
+    clearArmed = false; $('clear').textContent = 'Clear results';
     saved = savedAll[cfg.game] = {}; S = null; state = 'idle'; persist(); renderResults(); updateOverlay();
     $('export-out').hidden = true;
   });
