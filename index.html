@@ -174,6 +174,13 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
         <div class="field"><label for="gap">Next target</label><input id="gap" type="number" min="150" max="1500" step="50" value="350"><span class="hint">ms delay</span></div>
         <div class="field"><label for="pad">Mousepad width</label><input id="pad" type="number" min="20" max="120" step="1" value="45"><span class="hint">cm</span></div>
         <div class="field"><label for="fast">Fastest allowed</label><input id="fast" type="number" min="4" max="40" step="1" value="12"><span class="hint">cm/360</span></div>
+        <div class="field"><label for="tspeed">Tracking target</label>
+          <select id="tspeed">
+            <option value="calm">Calm · 6–18°/s</option>
+            <option value="real" selected>Realistic · 8–28°/s</option>
+            <option value="hard">Hard · 12–40°/s</option>
+          </select>
+        </div>
       </div>
     </details>
     <div class="status">
@@ -222,7 +229,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 
   <section class="how" aria-label="How the drills work">
     <div><h3>Flicks</h3><p>Targets 20–90° away. Your first click ends each target, hit or miss, so speed and accuracy are both measured. The replay marks where your first fast movement stopped (X) and where the target was (dashed ring).</p></div>
-    <div><h3>Tracking</h3><p>Keep the crosshair on a target that strafes and changes direction like a player. Always scored by time on target, whatever method you pick.</p></div>
+    <div><h3>Tracking</h3><p>Keep the crosshair on a target that strafes like a player 10–20 m away (8–28°/s by default, direction changes every 0.6–1.5 s). The first 220 ms after each direction change isn't scored, since nobody can react faster than that. Always scored by time on target.</p></div>
     <div><h3>Micro-adjust</h3><p>Small targets 3–12° away, like correcting onto a head. Scored with the selected method (Fitts throughput when Reach matching is selected).</p></div>
     <div><h3>Overall sens</h3><p>Tracking 45%, flicks 35%, micro-adjust 20%, blended on a log scale and kept inside your ergonomic range. Only drills you've run count.</p></div>
   </section>
@@ -238,6 +245,15 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   const BRACKET = [0.62, 0.79, 1, 1.27, 1.6], REPS = 2;
   const WEIGHTS = { flick: 0.35, track: 0.45, micro: 0.2 };
   const JITTER_MM = 0.1;                    // rough size of involuntary hand jitter while aiming
+  // Tracking target motion. A strafing player 10–20 m away moves roughly 10–30°/s across your view.
+  // Direction changes are spaced well beyond visual reaction time (~200–250 ms), and the first
+  // REACT_MS after each reversal isn't scored, so the score reflects sens rather than reaction speed.
+  const TRACK_PRESETS = {
+    calm: { name: 'Calm', vmin: 6, vmax: 18, tmin: 800, tmax: 1800, acc: 100 },
+    real: { name: 'Realistic', vmin: 8, vmax: 28, tmin: 600, tmax: 1500, acc: 140 },
+    hard: { name: 'Hard', vmin: 12, vmax: 40, tmin: 350, tmax: 1000, acc: 250 }
+  };
+  const REACT_MS = 220;
   const DRILLS = {
     flick: { name: 'Flicks', intro: 'Snap to each target in one quick motion and click.' },
     track: { name: 'Tracking', intro: 'Keep the crosshair on the strafing target. No clicking.' },
@@ -337,14 +353,14 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   const methodFor = id => METHODS[id] || TRACK_METHOD;
 
   // ---- settings ----
-  const cfg = { dpi: 5200, startSens: 1.5, fov: 120, perBlock: 10, gap: 350, mode: 'full', method: 'throughput', padCm: 45, fastCm: 12 };
+  const cfg = { dpi: 5200, startSens: 1.5, fov: 120, perBlock: 10, gap: 350, mode: 'full', method: 'throughput', padCm: 45, fastCm: 12, trackSpeed: 'real' };
   let scale = 1;                            // browser movement units per real mouse count
   let saved = {};                           // { flick, track, micro } latest result + raw data per drill
   try {
     const s3 = JSON.parse(localStorage.getItem('wzcal3') || 'null');
     const old = JSON.parse(localStorage.getItem('wzcal') || 'null');
     const src = s3 || old;
-    if (src) { const c = src.cfg || {}; ['dpi', 'fov', 'gap', 'padCm', 'fastCm', 'mode', 'method'].forEach(k => { if (c[k] !== undefined) cfg[k] = c[k]; }); scale = src.scale || 1; }
+    if (src) { const c = src.cfg || {}; ['dpi', 'fov', 'gap', 'padCm', 'fastCm', 'mode', 'method', 'trackSpeed'].forEach(k => { if (c[k] !== undefined) cfg[k] = c[k]; }); scale = src.scale || 1; }
     if (s3) saved = s3.result || {};        // results from older versions used different math and are dropped
     if (s3 && s3.cfg && s3.cfg.startSens) cfg.startSens = s3.cfg.startSens;
     if (s3 && s3.cfg && s3.cfg.perBlock) cfg.perBlock = s3.cfg.perBlock;
@@ -352,6 +368,8 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   if (!METHODS[cfg.method]) cfg.method = 'throughput';
   $('dpi').value = cfg.dpi; $('sens0').value = cfg.startSens; $('fov').value = cfg.fov; $('per').value = cfg.perBlock;
   $('gap').value = cfg.gap; $('pad').value = cfg.padCm; $('fast').value = cfg.fastCm; $('method').value = cfg.method;
+  if (!TRACK_PRESETS[cfg.trackSpeed]) cfg.trackSpeed = 'real';
+  $('tspeed').value = cfg.trackSpeed;
   const modeInput = document.querySelector(`input[name="mode"][value="${cfg.mode}"]`);
   if (modeInput) modeInput.checked = true;
 
@@ -369,6 +387,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     cfg.fastCm = num('fast', 4, 40, 12);
     cfg.mode = (document.querySelector('input[name="mode"]:checked') || {}).value || 'full';
     cfg.method = METHODS[$('method').value] ? $('method').value : 'throughput';
+    cfg.trackSpeed = TRACK_PRESETS[$('tspeed').value] ? $('tspeed').value : 'real';
     $('sens0-hint').textContent = cm360(cfg.startSens).toFixed(1) + ' cm/360';
     const mins = { full: 8, flick: 3, track: 2.5, micro: 2.5 }[cfg.mode];
     $('time-est').textContent = `About ${mins} min`;
@@ -397,6 +416,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   ['dpi', 'sens0', 'fov', 'per', 'gap', 'pad', 'fast'].forEach(id => $(id).addEventListener('input', () => { readInputs(); renderScale(); }));
   document.querySelectorAll('input[name="mode"]').forEach(el => el.addEventListener('change', readInputs));
   $('method').addEventListener('change', readInputs);
+  $('tspeed').addEventListener('change', readInputs);
 
   // ---- session state ----
   // S = { queue, step, drill, order }
@@ -605,20 +625,21 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   // ---- tracking ----
   function startTracking(now) {
     const p0 = Math.max(-20, Math.min(20, cam.pitch));
-    trk = { t0: now, last: now, ty: cam.yaw, tp: p0, p0, c: cam.yaw, v: 0, vt: 0, next: now + 400,
-            on: 0, total: 0, err: 0, lag: 0, lagT: 0 };
+    trk = { t0: now, last: now, ty: cam.yaw, tp: p0, p0, c: cam.yaw, v: 0, vt: 0, next: now + 400, flipAt: -1e9,
+            P: TRACK_PRESETS[cfg.trackSpeed] || TRACK_PRESETS.real, on: 0, total: 0, err: 0, lag: 0, lagT: 0 };
     state = 'tracking';
   }
   function stepTracking(now) {
-    const T = trk, dt = Math.min(0.05, (now - T.last) / 1000); T.last = now;
-    // Strafe like a player: pick a new speed and direction every 0.25–0.9 s, accelerate into it.
-    if (now >= T.next) { T.vt = (Math.random() < 0.5 ? -1 : 1) * (18 + Math.random() * 40); T.next = now + 250 + Math.random() * 650; }
-    if (T.ty - T.c > 35) T.vt = -Math.abs(T.vt); else if (T.ty - T.c < -35) T.vt = Math.abs(T.vt);
-    const maxDv = 500 * dt; T.v += Math.max(-maxDv, Math.min(maxDv, T.vt - T.v));
+    const T = trk, P = T.P, dt = Math.min(0.05, (now - T.last) / 1000); T.last = now;
+    // Strafe like a player: pick a new speed and direction every few hundred ms, accelerate into it.
+    const setVt = v => { if (Math.sign(v) !== Math.sign(T.vt)) T.flipAt = now; T.vt = v; };
+    if (now >= T.next) { setVt((Math.random() < 0.5 ? -1 : 1) * (P.vmin + Math.random() * (P.vmax - P.vmin))); T.next = now + P.tmin + Math.random() * (P.tmax - P.tmin); }
+    if (T.ty - T.c > 30 && T.vt > 0) setVt(-T.vt); else if (T.ty - T.c < -30 && T.vt < 0) setVt(-T.vt);
+    const maxDv = P.acc * dt; T.v += Math.max(-maxDv, Math.min(maxDv, T.vt - T.v));
     T.ty += T.v * dt;
     const el = (now - T.t0) / 1000;
     T.tp = T.p0 + 4 * Math.sin(el * 0.9) + 1.5 * Math.sin(el * 2.3);
-    if (now - T.t0 > SETTLE_MS) {
+    if (now - T.t0 > SETTLE_MS && now - T.flipAt > REACT_MS) {
       const e = angTo(T.ty, T.tp);
       T.total += dt; T.err += e * dt; if (e <= TRACK_R) T.on += dt;
       if (Math.abs(T.v) > 5) { T.lag += (T.ty - cam.yaw) * Math.sign(T.v) * dt; T.lagT += dt; }   // + = crosshair behind
@@ -1089,7 +1110,7 @@ Context:
 - Units: angles in degrees of in-game view rotation, times in milliseconds. Warzone turns 0.0066 degrees per mouse count at sens 1, so cm per 360 = 360 / (0.0066 * sens * dpi) * 2.54.
 - The player has been playing at a very high sensitivity (about 1.2 to 2 cm per 360 at 5200 to 7200 DPI) and says their flicks are rarely accurate. They may be over-adapted to that speed.
 - Flick and micro-adjust blocks test one sens each for a set number of targets, in shuffled order; the first 2 targets of each block are warm-up after a sens change. A target ends on the first click (hit or miss) unless the method is "reach".
-- Tracking blocks score the fraction of time the crosshair stayed within the target radius on a strafing target.
+- Tracking blocks score the fraction of time the crosshair stayed within the target radius on a strafing target; the first 220 ms after each direction reversal is not scored (reaction time). Target motion settings are in constants.trackTargetMotion.
 
 Please:
 1. Check data quality: warm-up effects, outliers, timeouts, and learning or fatigue across blocks (use the "order" field, which is global run order).
@@ -1141,7 +1162,8 @@ Field definitions are in the "definitions" section of the JSON.`;
         degPerCountAtSens1: YAW, flickTargetRadiusDeg: HIT_DEG, microTargetRadiusDeg: MICRO_R, trackTargetRadiusDeg: TRACK_R,
         flickDistanceDeg: '20 to 90, random direction (mostly horizontal)', microDistanceDeg: '3 to 12, any direction',
         flickTimeoutMs: TIMEOUT_MS, microTimeoutMs: MICRO_TIMEOUT, trackScoredMs: TRACK_MS, trackSettleMs: SETTLE_MS,
-        trackTargetSpeedDegPerS: '18 to 58, direction change every 250 to 900 ms', bracketMultipliers: BRACKET, repsPerSens: REPS,
+        trackTargetMotion: { preset: cfg.trackSpeed, ...TRACK_PRESETS[cfg.trackSpeed], units: 'vmin/vmax deg/s, tmin/tmax ms between direction changes, acc deg/s^2' },
+        trackReactionWindowExcludedMs: REACT_MS, bracketMultipliers: BRACKET, repsPerSens: REPS,
         blendWeights: WEIGHTS, reachMethodTarget: METHODS.reach.targetReach
       },
       overall: o && { sens: o.sens, cm360: r2(cm360(o.sens)), pulledToErgonomicEdge: o.clamped, parts: o.parts.map(p => ({ drill: p.k, sens: r2(p.s), share: r2(p.share) })) },

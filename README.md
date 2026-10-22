@@ -7,7 +7,7 @@ A browser tool that finds your Call of Duty: Warzone mouse sensitivity from how 
 ## Drills
 
 - **Flicks** – targets 20–90° away; the first click ends each target (hit or miss). A replay shows where your first fast movement stopped.
-- **Tracking** – keep the crosshair on a target that strafes and changes direction. Scored by time on target.
+- **Tracking** – keep the crosshair on a target that strafes like a player 10–20 m away (Realistic preset: 8–28°/s, direction change every 0.6–1.5 s; Calm and Hard presets available). The 220 ms after each reversal is not scored. Scored by time on target.
 - **Micro-adjust** – small targets 3–12° away.
 - **Full test** – all three, blended on a log scale: tracking 45%, flicks 35%, micro 20%.
 
