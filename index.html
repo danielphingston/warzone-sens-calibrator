@@ -72,6 +72,10 @@ header.top h1 { font-size: clamp(22px, 2.6vw, 30px); }
 .sidebar .data { padding: 14px; gap: 10px; }
 .sidebar .data h2 { font-size: 16px; }
 .sidebar .data textarea { min-height: 180px; }
+/* In the narrow sidebar, headings and notes sit above full-width button pairs instead of wrapping right-aligned. */
+.sidebar .data-head { display: grid; gap: 10px; }
+.sidebar .data .actions { margin-left: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sidebar .data .actions button { width: 100%; padding-inline: 8px; }
 @media (max-width: 900px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
   .sidebar { position: static; max-height: none; order: 2; }
