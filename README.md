@@ -44,7 +44,7 @@ On by default: flick and micro throughput use time from movement onset (click ti
 
 ## Practice
 
-Unlimited flicks, tracking or micro-adjust at a fixed sens with live stats. Nothing is saved.
+Turn on the Practice toggle and pick Flicks, Tracking or Micro-adjust under Test: unlimited targets at a fixed sens with live stats. Nothing is saved.
 
 ## Ergonomic range
 

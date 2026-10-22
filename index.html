@@ -60,6 +60,7 @@ h2 { font: 600 18px var(--font-display); letter-spacing: .03em; margin: 0; }
 header.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
 header.top h1 { font-size: clamp(22px, 2.6vw, 30px); }
 .setup .bar-actions { align-self: flex-start; margin-top: 20px; margin-left: auto; }
+#start { min-width: 132px; }               /* fits "Start practice" so the bar doesn't shift when the label changes */
 #settings-toggle[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
 .settings { display: grid; gap: 14px; border-top: 1px solid var(--line); padding-top: 14px; }
 .about { display: grid; gap: 6px; }
@@ -70,6 +71,7 @@ header.top h1 { font-size: clamp(22px, 2.6vw, 30px); }
 .seg label { display: flex; align-items: center; font: 600 13px var(--font-body); letter-spacing: 0; text-transform: none; color: var(--muted); padding: 0 12px; cursor: pointer; border-right: 1px solid var(--line); white-space: nowrap; }
 .seg label:last-of-type { border-right: 0; }
 .seg input:checked + label { background: var(--accent); color: var(--accent-ink); }
+.seg input:disabled + label { opacity: .4; cursor: not-allowed; }
 .seg input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: -2px; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-left: auto; }
 button { font: 600 14px var(--font-body); border-radius: 4px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--line); background: var(--panel-2); color: var(--fg); }
@@ -171,17 +173,12 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
         <input type="radio" name="mode" id="m-flick" value="flick"><label for="m-flick">Flicks</label>
         <input type="radio" name="mode" id="m-track" value="track"><label for="m-track">Tracking</label>
         <input type="radio" name="mode" id="m-micro" value="micro"><label for="m-micro">Micro-adjust</label>
-        <input type="radio" name="mode" id="m-practice" value="practice"><label for="m-practice">Practice</label>
       </div>
       <span class="hint" id="time-est"></span>
     </div>
-    <div class="field" id="pdrill-field" hidden><label for="pdrill">Practice drill</label>
-      <select id="pdrill">
-        <option value="flick">Flicks</option>
-        <option value="track">Tracking</option>
-        <option value="micro">Micro-adjust</option>
-      </select>
-      <span class="hint">unlimited · fixed sens</span>
+    <div class="field"><span class="label">Practice</span>
+      <label class="toggle" for="practice"><input id="practice" type="checkbox"><span>Unlimited</span></label>
+      <span class="hint">fixed sens · uses Test</span>
     </div>
     <div class="field"><label for="dpi">Mouse DPI</label><input id="dpi" type="number" min="100" max="32000" step="50" value="5200"></div>
     <div class="field"><label for="sens0">Center sens</label><input id="sens0" type="number" min="0.001" max="100" step="0.01" value="1.5"><span class="hint" id="sens0-hint"></span></div>
@@ -287,7 +284,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     <div><h3>Flicks</h3><p>Targets 20–90° away. Your first click ends each target, hit or miss, so speed and accuracy are both measured. The replay marks where your first fast movement stopped (X) and where the target was (dashed ring).</p></div>
     <div><h3>Tracking</h3><p>Keep the crosshair on a target that strafes like a player 10–20 m away (8–28°/s by default, direction changes every 0.6–1.5 s). The first 220 ms after each direction change isn't scored, since nobody can react faster than that. Always scored by time on target.</p></div>
     <div><h3>Micro-adjust</h3><p>Small targets 3–12° away, like correcting onto a head. Scored with the selected method (Fitts throughput when Reach matching is selected).</p></div>
-    <div><h3>Practice</h3><p>Pick Practice under Test to drill flicks, tracking or micro-adjust at exactly your Center sens, for as long as you like. Live hit rate, time and where your flicks stop show in the corner. Nothing is scored or saved, and the ergonomic limits don't apply.</p></div>
+    <div><h3>Practice</h3><p>Turn on Practice, then pick Flicks, Tracking or Micro-adjust under Test to drill it at exactly your Center sens, for as long as you like. Live hit rate, time and where your flicks stop show in the corner. Nothing is scored or saved, and the ergonomic limits don't apply.</p></div>
     <div><h3>Overall sens</h3><p id="blend-text">Tracking 45%, flicks 35%, micro-adjust 20%, blended on a log scale and kept inside your ergonomic range. Only drills you've run count.</p></div>
   </section>
 </main>
@@ -435,7 +432,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   const methodFor = id => METHODS[id] || TRACK_METHOD;
 
   // ---- settings ----
-  const cfg = { game: 'warzone', dpi: 5200, startSens: 1.5, fov: 120, perBlock: 10, gap: 350, mode: 'full', method: 'throughput', padCm: 45, fastCm: 12, trackSpeed: 'real', search: 'bracket', excludeRT: true, enforceErgo: true, practiceDrill: 'flick' };
+  const cfg = { game: 'warzone', dpi: 5200, startSens: 1.5, fov: 120, perBlock: 10, gap: 350, mode: 'full', method: 'throughput', padCm: 45, fastCm: 12, trackSpeed: 'real', search: 'bracket', excludeRT: true, enforceErgo: true, practice: false };
   let scale = 1;                            // browser movement units per real mouse count
   let savedAll = {};                        // { warzone: {...}, valorant: {...} }
   let saved = {};                           // current game's { flick, track, micro } latest result + raw data per drill
@@ -443,7 +440,10 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     const s3 = JSON.parse(localStorage.getItem('wzcal3') || 'null');
     const old = JSON.parse(localStorage.getItem('wzcal') || 'null');
     const src = s3 || old;
-    if (src) { const c = src.cfg || {}; ['game', 'dpi', 'fov', 'gap', 'padCm', 'fastCm', 'mode', 'method', 'trackSpeed', 'search', 'excludeRT', 'enforceErgo', 'practiceDrill'].forEach(k => { if (c[k] !== undefined) cfg[k] = c[k]; }); scale = src.scale || 1; }
+    if (src) { const c = src.cfg || {}; ['game', 'dpi', 'fov', 'gap', 'padCm', 'fastCm', 'mode', 'method', 'trackSpeed', 'search', 'excludeRT', 'enforceErgo', 'practice'].forEach(k => { if (c[k] !== undefined) cfg[k] = c[k]; });
+      // Older versions had Practice as a Test tab with its own drill picker.
+      if (cfg.mode === 'practice') { cfg.mode = DRILLS[c.practiceDrill] ? c.practiceDrill : 'flick'; cfg.practice = true; }
+      scale = src.scale || 1; }
     // v3 stored one game's results; v4 stores them per game. Older versions used different math and are dropped.
     if (s3) savedAll = (s3.v || 3) >= 4 ? (s3.result || {}) : { warzone: s3.result || {} };
     if (s3 && s3.cfg && s3.cfg.startSens) cfg.startSens = s3.cfg.startSens;
@@ -458,8 +458,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   $('tspeed').value = cfg.trackSpeed;
   if (cfg.search !== 'bayes') cfg.search = 'bracket';
   $('search').value = cfg.search; $('rt').checked = cfg.excludeRT !== false; $('ergo').checked = cfg.enforceErgo !== false;
-  if (!DRILLS[cfg.practiceDrill]) cfg.practiceDrill = 'flick';
-  $('pdrill').value = cfg.practiceDrill;
+  $('practice').checked = !!cfg.practice;
   for (const [name, val] of [['mode', cfg.mode], ['game', cfg.game]]) {
     const el = document.querySelector(`input[name="${name}"][value="${val}"]`);
     if (el) el.checked = true;
@@ -483,12 +482,15 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     cfg.search = $('search').value === 'bayes' ? 'bayes' : 'bracket';
     cfg.excludeRT = $('rt').checked;
     cfg.enforceErgo = $('ergo').checked;
-    cfg.practiceDrill = DRILLS[$('pdrill').value] ? $('pdrill').value : 'flick';
-    $('pdrill-field').hidden = cfg.mode !== 'practice';
+    // Practice reuses the Test selection as its drill; a full test can't be practiced, so it falls back to Flicks.
+    cfg.practice = $('practice').checked;
+    $('m-full').disabled = cfg.practice;
+    if (cfg.practice && cfg.mode === 'full') { cfg.mode = 'flick'; $('m-flick').checked = true; }
+    $('start').textContent = cfg.practice ? 'Start practice' : 'Start';
     $('rt-hint').textContent = cfg.excludeRT ? 'times start at movement' : 'times start at target';
     renderGame();
     const mins = cfg.search === 'bayes' ? { full: '5–7', flick: '2', track: '1.5–2', micro: '1.5–2' }[cfg.mode] : { full: 8, flick: 3, track: 2.5, micro: 2.5 }[cfg.mode];
-    $('time-est').textContent = cfg.mode === 'practice' ? 'unlimited · Esc to stop' : `about ${mins} min`;
+    $('time-est').textContent = cfg.practice ? 'unlimited · Esc to stop' : `about ${mins} min`;
     $('summary-chip').textContent = `${METHODS[cfg.method].name} · ${cfg.search === 'bayes' ? 'Bayesian search' : 'fixed bracket'} · reaction time ${cfg.excludeRT ? 'excluded' : 'included'} · limits ${cfg.enforceErgo ? 'on' : 'off'}`;
     persist();
     renderMethod();
@@ -562,7 +564,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   $('search').addEventListener('change', readInputs);
   $('rt').addEventListener('change', readInputs);
   $('ergo').addEventListener('change', () => { readInputs(); renderResults(); });
-  $('pdrill').addEventListener('change', readInputs);
+  $('practice').addEventListener('change', readInputs);
 
   // ---- session state ----
   // S = { queue, step, drill, order }
@@ -592,8 +594,8 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 
   function startSession() {
     readInputs();
-    const practice = cfg.mode === 'practice';
-    const queue = practice ? [cfg.practiceDrill] : cfg.mode === 'full' ? ['flick', 'track', 'micro'] : [cfg.mode];
+    const practice = cfg.practice;
+    const queue = practice ? [cfg.mode] : cfg.mode === 'full' ? ['flick', 'track', 'micro'] : [cfg.mode];
     S = { queue, step: 0, order: 0, drill: null, practice, startedAt: new Date().toISOString() };
     S.drill = makeDrill(queue[0]);
     cam = { yaw: 0, pitch: 0 }; trial = null; trk = null; between = null; ghost = null; flash = null;
