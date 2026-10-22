@@ -6,11 +6,31 @@ A browser tool that finds your Call of Duty: Warzone mouse sensitivity from how 
 
 ## Drills
 
-- **Flick reach** – snap to targets 20–90° away. Measures where your first fast movement stops (past or short of the target) and adjusts sens each round until two rounds land within 6%. A replay shows the target, your path and where the flick stopped.
-- **Tracking** – keep the crosshair on a target that strafes and changes direction. Tests five sens values (two shuffled blocks each) and fits a curve to time-on-target to find your best.
-- **Micro-adjust** – small, close targets. Same five-value test, scored by targets per minute with a miss penalty.
-- **Full test** – runs all three and blends them: tracking 45%, flick 35%, micro 20%.
+- **Flicks** – targets 20–90° away; the first click ends each target (hit or miss). A replay shows where your first fast movement stopped.
+- **Tracking** – keep the crosshair on a target that strafes and changes direction. Scored by time on target.
+- **Micro-adjust** – small targets 3–12° away.
+- **Full test** – all three, blended on a log scale: tracking 45%, flicks 35%, micro 20%.
 
-Uses Warzone's sensitivity scale (0.0066° per count at sens 1), so results go straight into the game at the same DPI. Includes a 10 cm ruler check to confirm the browser reads your DPI correctly.
+Each drill tests five sens values twice in shuffled order (first 2 targets of each block are warm-up) and fits a parabola of score vs ln(sens) to find the peak.
 
-Works best in Chrome or Edge on desktop, fullscreen, with Windows pointer speed at 6/11 and Enhance pointer precision off.
+## Scoring methods (selectable)
+
+| Method | Uses | Calculation |
+|---|---|---|
+| **Fitts throughput** (default) | distance, time to first click, click overshoot, timeouts | ISO 9241-9 effective throughput: We = 4.133·SD(overshoot), TP = mean(log2(D/We + 1) / MT) |
+| **Precision-first** | first-click hits, overshoot spread relative to distance | hit rate ÷ (1 + 4.133·SD(overshoot/D)) |
+| **Reach matching** (legacy) | where the first fast movement stopped | steps sens toward a 93% reach (primary movements normally undershoot), ±15% per round |
+
+## Ergonomic range
+
+All tests and results stay between a slow limit (a 180° turn fits in 80% of your mousepad width) and a fast limit (default 12 cm/360, where ~0.1 mm of hand jitter moves aim ~0.3°). Both are adjustable.
+
+## Export
+
+"Build export" produces an analysis prompt plus every block and target with raw readings and field definitions, ready to paste into an AI.
+
+## References
+
+- MacKenzie, Fitts' law and ISO 9241-9: https://www.yorku.ca/mack/UCLAN2018/FittsLaw.pdf
+- Casiez et al. 2008, control-display gain and pointing: https://www.gwern.net/doc/design/2008-casiez.pdf
+- Roberts et al. 2020, energy minimization and undershoot in aiming: https://ljmu-9.eprints-hosting.org/id/eprint/12204/11/Roberts2020_Article_EnergyMinimizationWithinTarget.pdf
