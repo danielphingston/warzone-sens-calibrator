@@ -111,6 +111,7 @@ tr:last-child td { border-bottom: 0; }
     <div class="field"><label for="sens0">Start sens</label><input id="sens0" type="number" min="0.05" max="30" step="0.05" value="1.5"><span class="hint" id="sens0-hint"></span></div>
     <div class="field"><label for="fov">FOV</label><input id="fov" type="number" min="60" max="120" step="1" value="120"></div>
     <div class="field"><label for="per">Flicks / round</label><input id="per" type="number" min="6" max="30" step="1" value="12"></div>
+    <div class="field"><label for="gap">Next target</label><input id="gap" type="number" min="150" max="1500" step="50" value="350"><span class="hint">ms delay</span></div>
     <div class="actions">
       <button id="check" type="button">Check mouse scaling</button>
       <button id="start" class="primary" type="button">Start calibration</button>
@@ -147,19 +148,19 @@ tr:last-child td { border-bottom: 0; }
 (() => {
   const YAW = 0.0066;          // CoD degrees per count at sens 1
   const HIT_DEG = 2.2;         // target radius in degrees
-  const GAP_MS = 750, TIMEOUT_MS = 6000, MAX_ROUNDS = 7, TOL = 0.06;
+  const TIMEOUT_MS = 6000, MAX_ROUNDS = 7, TOL = 0.06;
   const $ = id => document.getElementById(id);
   const canvas = $('arena'), ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
   const arenaWrap = document.querySelector('.arena-wrap');
 
-  const cfg = { dpi: 5200, startSens: 1.5, fov: 120, perRound: 12 };
+  const cfg = { dpi: 5200, startSens: 1.5, fov: 120, perRound: 12, gap: 350 };
   let scale = 1;               // browser movement units per real mouse count
   let saved = null;
   try {
     const s = JSON.parse(localStorage.getItem('wzcal') || 'null');
     if (s) { Object.assign(cfg, s.cfg || {}); scale = s.scale || 1; saved = s.result || null; }
   } catch (e) {}
-  $('dpi').value = cfg.dpi; $('sens0').value = cfg.startSens; $('fov').value = cfg.fov; $('per').value = cfg.perRound;
+  $('dpi').value = cfg.dpi; $('sens0').value = cfg.startSens; $('fov').value = cfg.fov; $('per').value = cfg.perRound; $('gap').value = cfg.gap;
 
   function persist() {
     try { localStorage.setItem('wzcal', JSON.stringify({ cfg, scale, result: saved })); } catch (e) {}
@@ -170,6 +171,7 @@ tr:last-child td { border-bottom: 0; }
     cfg.startSens = num('sens0', 0.05, 30, 1.5);
     cfg.fov = num('fov', 60, 120, 120);
     cfg.perRound = Math.round(num('per', 6, 30, 12));
+    cfg.gap = Math.round(num('gap', 150, 1500, 350));
     $('sens0-hint').textContent = cm360(cfg.startSens).toFixed(1) + ' cm/360';
     persist();
   }
@@ -177,7 +179,7 @@ tr:last-child td { border-bottom: 0; }
   const r2 = v => Math.round(v * 100) / 100;
   const median = a => { const b = [...a].sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
   const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN;
-  ['dpi', 'sens0', 'fov', 'per'].forEach(id => $(id).addEventListener('input', () => { readInputs(); renderScale(); }));
+  ['dpi', 'sens0', 'fov', 'per', 'gap'].forEach(id => $(id).addEventListener('input', () => { readInputs(); renderScale(); }));
 
   // ---- session state ----
   let S = null;                // { sens, rounds, cur, final }
@@ -279,7 +281,7 @@ tr:last-child td { border-bottom: 0; }
     const a = analyzeTrial(trial, t);
     a.hit = hit; a.misses = trial.misses;
     S.cur.trials.push(a);
-    const until = performance.now() + GAP_MS + 150;
+    const until = performance.now() + cfg.gap + 150;
     if (a.valid) {
       const pct = Math.round((a.reach - 1) * 100), color = kind(a.reach) === 'on' ? 'good' : kind(a.reach);
       const side = a.side >= 0.5 ? `  ·  ${a.side.toFixed(1)}° ${a.sideDir}` : '';
@@ -289,7 +291,7 @@ tr:last-child td { border-bottom: 0; }
     } else { flash = { text: hit ? 'Too slow to read, flick faster' : 'Timed out', color: 'muted', until }; ghost = null; }
     trial = null;
     if (S.cur.trials.length >= cfg.perRound) endRound();
-    else { state = 'gap'; gapUntil = performance.now() + GAP_MS; }
+    else { state = 'gap'; gapUntil = performance.now() + cfg.gap; }
   }
 
   function endRound() {
