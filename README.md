@@ -52,7 +52,7 @@ By default, tests and results stay between a slow limit (a 180° turn fits in 80
 
 ## Video recording
 
-Record any run as a small WebM (640×360, 30 fps, about 3–4 MB a minute) from the sidebar, or tick **Record every run automatically**. A timer is burned into each frame, and every target and tracking block in the export carries videoT (seconds into the video), so an AI can line the numbers up with what it sees.
+Every run is recorded automatically as a small WebM (640×360, 30 fps, about 3–4 MB a minute): tests from Start until they finish, practice from Start until Esc. Pausing a test with Esc pauses the video, so the clip has no dead time. A timer is burned into each frame, and every target and tracking block in the export carries videoT (seconds into the video), so an AI can line the numbers up with what it sees. Download the last run from the sidebar.
 
 ## Export
 

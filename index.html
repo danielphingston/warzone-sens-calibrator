@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Mouse sensitivity finder for Warzone and Valorant: flick, tracking and micro-adjust drills scored with Fitts throughput, Bayesian adaptive search, practice mode, WebM recording and an AI-ready data export.">
+<meta name="description" content="Mouse sensitivity finder for Warzone and Valorant: flick, tracking and micro-adjust drills scored with Fitts throughput, Bayesian adaptive search, practice mode, automatic WebM recording and an AI-ready data export.">
 <style>*,*::before,*::after{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Warzone Sens Calibrator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -79,12 +79,13 @@ header.top h1 { font-size: clamp(22px, 2.6vw, 30px); }
 .sidebar .data .note { margin: 0; font: 12px/1.45 var(--font-data); color: var(--muted); }
 .check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--fg); cursor: pointer; }
 .check input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
-#rec { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .rec-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--over); flex: none; }
-#rec.on { border-color: var(--over); color: var(--over); }
-#rec.on .rec-dot { border-radius: 2px; animation: recpulse 1s steps(2) infinite; }
+.rec-dot { display: inline-block; vertical-align: middle; background: var(--muted); }
+.rec-dot.on { background: var(--over); animation: recpulse 1s steps(2) infinite; }
+.rec-dot.paused { background: var(--accent); }
+#rec-dl { width: 100%; }
 @keyframes recpulse { 50% { opacity: .3; } }
-@media (prefers-reduced-motion: reduce) { #rec.on .rec-dot { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .rec-dot.on { animation: none; } }
 button:disabled { opacity: .45; cursor: not-allowed; filter: none; }
 @media (max-width: 900px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
@@ -296,14 +297,10 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     </section>
     <section class="data" aria-label="Video recording">
       <div class="data-head">
-        <h2>Video for AI</h2>
-        <div class="actions">
-          <button id="rec" type="button"><span class="rec-dot" aria-hidden="true"></span><span id="rec-label">Record</span></button>
-          <button id="rec-dl" type="button" disabled>Download .webm</button>
-        </div>
+        <h2><span class="rec-dot" id="rec-dot" aria-hidden="true"></span> Video for AI</h2>
       </div>
-      <label class="check" for="rec-auto"><input id="rec-auto" type="checkbox"> Record every run automatically</label>
-      <p class="note" id="rec-status">640×360 · 30 fps · about 3–4 MB a minute. Attach it with the export so an AI can watch your aim.</p>
+      <p class="note" id="rec-status" aria-live="polite"></p>
+      <button id="rec-dl" type="button" disabled>Download .webm</button>
     </section>
     </aside>
     <div class="main">
@@ -639,7 +636,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     S.drill = makeDrill(queue[0]);
     cam = { yaw: 0, pitch: 0 }; trial = null; trk = null; between = null; ghost = null; flash = null;
     state = 'ready';
-    if ($('rec-auto').checked && !rec) startRec();
+    startRec();
     renderResults(); updateOverlay();
   }
 
@@ -974,7 +971,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
       state = locked ? 'intro' : 'ready';
     } else {
       state = 'done';
-      if ($('rec-auto').checked && rec) setTimeout(stopRec, 800);   // keep the final result screen in the video
+      setTimeout(stopRec, 800);   // keep the final result screen in the video
       if (document.pointerLockElement) document.exitPointerLock();
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     }
@@ -999,12 +996,14 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   document.addEventListener('pointerlockchange', () => {
     locked = document.pointerLockElement === canvas;
     if (locked) {
+      if (S && S.practice && !rec && state !== 'done') startRec(); else resumeRec();
       if (state === 'ready') state = 'intro';
       else if (state === 'paused') resume();
       else if (state === 'measureReady') state = 'measureArm';
     } else {
       if (['trial', 'gap', 'tracking', 'countdown'].includes(state)) { trial = null; trk = null; state = 'paused'; }
       else if (state === 'measureArm' || state === 'measure') state = 'measureReady';
+      if (S && S.practice) stopRec(); else if (state !== 'done') pauseRec();   // a finished test stops on its own
     }
     updateOverlay();
   });
@@ -1547,36 +1546,27 @@ Field definitions are in the "definitions" section of the JSON.`;
     navigator.clipboard.writeText(ta.value).then(() => { $('export-note').textContent = 'Copied. Paste it into a new chat.'; })
       .catch(() => { ta.focus(); ta.select(); $('export-note').textContent = 'Press Ctrl+C to copy the selected text.'; });
   });
-  // Save a file: inside claude.ai the viewer confirms through the downloads capability;
-  // on a normal web page (GitHub Pages) it's an ordinary browser download.
-  let downloadsNs;
-  async function saveFile(filename, blob) {
-    if (downloadsNs === undefined) {
-      try { downloadsNs = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) { downloadsNs = null; }
-    }
-    if (downloadsNs) {
-      try { await downloadsNs.save({ filename, data: blob }); return 'saved'; }
-      catch (e) { return e && e.code === 'declined' ? 'declined' : 'failed'; }
-    }
-    if (window.claude) return 'failed';     // inside the viewer without the capability: plain links are blocked
+  // Save a file with an ordinary browser download.
+  function saveFile(filename, blob) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 30000);
-    return 'saved';
   }
   const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
 
-  $('download').addEventListener('click', async () => {
+  $('download').addEventListener('click', () => {
     if (!lastExport) return;
-    const r = await saveFile(`sens-data-${stamp()}.json`, new Blob([JSON.stringify({ prompt: promptText(), ...lastExport.data }, null, 2)], { type: 'application/json' }));
-    $('export-note').textContent = r === 'saved' ? 'Saved.' : r === 'declined' ? 'Download cancelled.' : 'Download isn’t available here. Use Copy instead.';
+    saveFile(`sens-data-${stamp()}.json`, new Blob([JSON.stringify({ prompt: promptText(), ...lastExport.data }, null, 2)], { type: 'application/json' }));
+    $('export-note').textContent = 'Saved to your downloads.';
   });
 
-  // ---- video recording ----
-  // The range is copied into a small 640×360 canvas each frame and encoded as WebM at a low bitrate,
-  // so a few minutes of play stays a few MB. The HUD is in the frame (drill, sens, block), and a
-  // timer is burned into the corner; trial.videoT in the export says when each target appeared.
+  // ---- video recording (automatic) ----
+  // Every run is recorded: tests from Start until they finish, practice from Start until Esc.
+  // Pausing a test with Esc pauses the video, so the clip has no dead time and timestamps stay true.
+  // The range is copied into a 640×360 canvas on a steady 30 fps clock and encoded as low-bitrate
+  // WebM. The HUD is in the frame and a timer is burned into the corner; trial.videoT and
+  // block.videoT in the export say where each target or tracking block starts in the video.
   const REC_W = 640, REC_H = 360, REC_FPS = 30, REC_BPS = 450000, REC_MAX_MS = 15 * 60 * 1000;
   const recCanvas = document.createElement('canvas'); recCanvas.width = REC_W; recCanvas.height = REC_H;
   const recCtx = recCanvas.getContext('2d');
@@ -1584,54 +1574,68 @@ Field definitions are in the "definitions" section of the JSON.`;
   const recMime = () => ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m));
   const fmtSize = b => b < 1048576 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1048576).toFixed(1)} MB`;
   const fmtTime = ms => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+  const recElapsed = (r, now = performance.now()) => now - r.t0 - r.pausedMs - (r.pauseAt ? now - r.pauseAt : 0);
   function recUI() {
-    $('rec').classList.toggle('on', !!rec);
-    $('rec-label').textContent = rec ? 'Stop' : 'Record';
-    $('rec-dl').disabled = !recBlob || !!rec;
-    if (!recMime()) { $('rec').disabled = true; $('rec-status').textContent = 'This browser can’t record WebM video. Use Chrome, Edge or Firefox.'; return; }
-    if (rec) $('rec-status').textContent = `Recording ${fmtTime(performance.now() - rec.t0)} · ${fmtSize(rec.bytes)}`;
-    else if (recBlob) $('rec-status').textContent = `Ready: ${fmtTime(recInfo.durationMs)} · ${fmtSize(recBlob.size)} WebM. Download it, then Build export so the timestamps match.`;
+    $('rec-dl').disabled = !recBlob;
+    $('rec-dot').className = 'rec-dot' + (rec ? (rec.pauseAt ? ' paused' : ' on') : '');
+    if (!recMime()) { $('rec-status').textContent = 'This browser can’t record WebM video. Use Chrome, Edge or Firefox.'; return; }
+    if (rec) $('rec-status').textContent = `${rec.pauseAt ? 'Paused' : 'Recording'} ${fmtTime(recElapsed(rec))} · ${fmtSize(rec.bytes)}`;
+    else if (recBlob) $('rec-status').textContent = `Last run: ${fmtTime(recInfo.durationMs)} · ${fmtSize(recBlob.size)}. Download it, then Build export so the timestamps match.`;
+    else $('rec-status').textContent = 'Every run is recorded automatically: 640×360, 30 fps, about 3–4 MB a minute.';
   }
+  // Own steady frame clock, so the video keeps a constant 30 fps whatever the screen refresh rate.
+  const startClock = r => { r.timer = setInterval(() => recFrame(performance.now()), 1000 / REC_FPS); };
   function startRec() {
-    const mimeType = recMime(); if (!mimeType || rec) return;
-    const stream = recCanvas.captureStream(REC_FPS);
-    const mr = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: REC_BPS });
-    const chunks = [];
-    rec = { mr, chunks, t0: performance.now(), startedAt: new Date().toISOString(), bytes: 0, mimeType };
-    recBlob = null;
-    mr.ondataavailable = e => { if (e.data && e.data.size) { chunks.push(e.data); rec && (rec.bytes += e.data.size); } };
+    const mimeType = recMime(); if (!mimeType) return;
+    if (rec) stopRec();
+    const mr = new MediaRecorder(recCanvas.captureStream(REC_FPS), { mimeType, videoBitsPerSecond: REC_BPS });
+    const r = { mr, chunks: [], t0: performance.now(), pausedMs: 0, pauseAt: 0, startedAt: new Date().toISOString(), bytes: 0, mimeType };
+    mr.ondataavailable = e => { if (e.data && e.data.size) { r.chunks.push(e.data); r.bytes += e.data.size; } };
     mr.onstop = () => {
-      recBlob = new Blob(chunks, { type: 'video/webm' });
-      recInfo = { startedAt: rec.startedAt, durationMs: Math.round(performance.now() - rec.t0), codec: mimeType, width: REC_W, height: REC_H, fps: REC_FPS, sizeBytes: recBlob.size, t0: rec.t0 };
-      rec = null; recUI();
+      recBlob = new Blob(r.chunks, { type: 'video/webm' });
+      recInfo = { startedAt: r.startedAt, durationMs: Math.round(r.durationMs), codec: mimeType, width: REC_W, height: REC_H, fps: REC_FPS, sizeBytes: recBlob.size };
+      recUI();
     };
     mr.start(1000);
-    // Own steady frame clock, so the video keeps a constant 30 fps whatever the screen refresh rate.
-    rec.timer = setInterval(() => recFrame(performance.now()), 1000 / REC_FPS);
-    rec.ui = setInterval(recUI, 500);
+    rec = r;
+    startClock(r);
+    r.ui = setInterval(recUI, 500);
     recUI();
   }
-  function stopRec() { if (!rec) return; clearInterval(rec.timer); clearInterval(rec.ui); if (rec.mr.state !== 'inactive') rec.mr.stop(); }
+  function stopRec() {
+    const r = rec; if (!r) return;
+    rec = null;
+    r.durationMs = recElapsed(r);
+    clearInterval(r.timer); clearInterval(r.ui);
+    if (r.mr.state !== 'inactive') r.mr.stop();
+    recUI();
+  }
+  function pauseRec() {
+    if (!rec || rec.pauseAt || rec.mr.state !== 'recording') return;
+    recFrame(performance.now());
+    rec.mr.pause(); rec.pauseAt = performance.now(); clearInterval(rec.timer); recUI();
+  }
+  function resumeRec() {
+    if (!rec || !rec.pauseAt || rec.mr.state !== 'paused') return;
+    rec.pausedMs += performance.now() - rec.pauseAt; rec.pauseAt = 0;
+    rec.mr.resume(); startClock(rec); recUI();
+  }
   // Seconds into the current recording, for linking data rows to the video.
-  const videoT = t => rec ? Math.round((t - rec.t0) / 10) / 100 : null;
+  const videoT = t => rec ? Math.round(recElapsed(rec, t) / 10) / 100 : null;
   function recFrame(now) {
     if (!rec) return;
-    if (now - rec.t0 > REC_MAX_MS) { stopRec(); return; }
+    if (recElapsed(rec, now) > REC_MAX_MS) { stopRec(); return; }
     recCtx.fillStyle = '#000'; recCtx.fillRect(0, 0, REC_W, REC_H);
     const k = Math.min(REC_W / canvas.width, REC_H / canvas.height), w = canvas.width * k, h = canvas.height * k;
     recCtx.drawImage(canvas, (REC_W - w) / 2, (REC_H - h) / 2, w, h);
     recCtx.font = '500 11px "IBM Plex Mono", Consolas, monospace'; recCtx.textBaseline = 'bottom'; recCtx.textAlign = 'left';
     recCtx.fillStyle = 'rgba(0,0,0,.6)'; recCtx.fillRect(4, REC_H - 20, 70, 16);
-    recCtx.fillStyle = '#ec6a52'; recCtx.fillText(`● ${((now - rec.t0) / 1000).toFixed(1)}s`, 8, REC_H - 6);
+    recCtx.fillStyle = '#ec6a52'; recCtx.fillText(`● ${(recElapsed(rec, now) / 1000).toFixed(1)}s`, 8, REC_H - 6);
   }
-  $('rec').addEventListener('click', () => { rec ? stopRec() : startRec(); });
-  $('rec-dl').addEventListener('click', async () => {
+  $('rec-dl').addEventListener('click', () => {
     if (!recBlob) return;
-    const r = await saveFile(`sens-run-${stamp()}.webm`, recBlob);
-    if (r !== 'saved') $('rec-status').textContent = r === 'declined' ? 'Download cancelled. The video is still here.' : 'Download isn’t available in this view. Open the GitHub page to save videos.';
+    saveFile(`sens-run-${stamp()}.webm`, recBlob);
   });
-  try { $('rec-auto').checked = localStorage.getItem('wzcal-rec-auto') === '1'; } catch (e) {}
-  $('rec-auto').addEventListener('change', () => { try { localStorage.setItem('wzcal-rec-auto', $('rec-auto').checked ? '1' : '0'); } catch (e) {} });
   recUI();
   let clearArmed = false;
   $('clear').addEventListener('click', () => {
