@@ -535,6 +535,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
       S = null; trial = null; trk = null; state = 'idle';
     }
     cfg.game = el.value;
+    $('fov').value = G().fixedFov || cfg.fov;     // restore your own FOV before it's read back
     saved = savedAll[cfg.game] = savedAll[cfg.game] || {};
     cfg.startSens = rs(sensAtCm(cm)); showSens();
     readInputs(); showCm(); renderResults(); updateOverlay();
