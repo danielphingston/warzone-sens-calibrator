@@ -50,6 +50,10 @@ Turn on the Practice toggle and pick Flicks, Tracking or Micro-adjust under Test
 
 By default, tests and results stay between a slow limit (a 180° turn fits in 80% of your mousepad width) and a fast limit (default 12 cm/360, where ~0.1 mm of hand jitter moves aim ~0.3°). Both are adjustable, and **Enforce** can be turned off to test anywhere from 2 to 200 cm/360; results outside the recommended range are marked.
 
+## Video recording
+
+Record any run as a small WebM (640×360, 30 fps, about 3–4 MB a minute) from the sidebar, or tick **Record every run automatically**. A timer is burned into each frame, and every target and tracking block in the export carries videoT (seconds into the video), so an AI can line the numbers up with what it sees.
+
 ## Export
 
 "Build export" produces an analysis prompt plus every block and target with raw readings and field definitions, ready to paste into an AI.
