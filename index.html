@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Flick-based Warzone mouse sensitivity finder: measures overshoot and undershoot and adjusts your sens until flicks land on target.">
+<meta name="description" content="Warzone mouse sensitivity finder: flick-reach, tracking and micro-adjust drills that blend into one overall sens.">
 <style>*,*::before,*::after{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Warzone Sens Calibrator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-/* Layout: one column — setup strip, 16:9 firing range, then the verdict and round log. Single dark look on purpose (it's a game tool). */
+/* Layout: one column — setup strip, 16:9 firing range, then the blended verdict beside one card per drill. Single dark look on purpose (it's a game tool). */
 :root {
   color-scheme: dark;
   --bg: #0e1316;
@@ -40,29 +40,34 @@ body { font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
 header { display: grid; gap: 6px; }
 .eyebrow { font-family: var(--font-data); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
 h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(28px, 4.4vw, 40px); line-height: 1.05; margin: 0; letter-spacing: .01em; text-wrap: balance; }
-.lede { color: var(--muted); max-width: 68ch; margin: 0; }
-h2 { font-family: var(--font-display); font-weight: 600; font-size: 18px; margin: 0; letter-spacing: .02em; }
+.lede { color: var(--muted); max-width: 70ch; margin: 0; }
 
 .setup { display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: end; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
 .field { display: grid; gap: 4px; min-width: 0; }
-.field label { font-size: 12px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; font-family: var(--font-data); }
-.field input { width: 96px; font: 500 16px var(--font-data); color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 7px 9px; font-variant-numeric: tabular-nums; }
+.field label, .field .label { font-size: 12px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; font-family: var(--font-data); }
+.field input[type="number"] { width: 96px; font: 500 16px var(--font-data); color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 7px 9px; font-variant-numeric: tabular-nums; }
 .field input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .field .hint { font: 12px var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
+.seg { display: flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: var(--panel-2); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { font: 600 13px var(--font-body); letter-spacing: 0; text-transform: none; color: var(--muted); padding: 8px 12px; cursor: pointer; border-right: 1px solid var(--line); }
+.seg label:last-of-type { border-right: 0; }
+.seg input:checked + label { background: var(--accent); color: var(--accent-ink); }
+.seg input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: -2px; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-left: auto; }
 button { font: 600 14px var(--font-body); border-radius: 4px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--line); background: var(--panel-2); color: var(--fg); }
 button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 button:hover { filter: brightness(1.08); }
 .status { display: flex; flex-wrap: wrap; gap: 8px 16px; width: 100%; font: 12px var(--font-data); color: var(--muted); }
 .chip { display: inline-flex; align-items: center; gap: 6px; }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
 .dot.ok { background: var(--good); } .dot.warn { background: var(--over); }
 
 .arena-wrap { position: relative; width: 100%; max-width: calc(72vh * 16 / 9); margin: 0 auto; aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #0a0f12; }
 canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 .arena-wrap:fullscreen { max-width: none; width: 100%; height: 100%; aspect-ratio: auto; border: 0; border-radius: 0; }
 .overlay { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; background: rgba(8, 12, 14, .72); cursor: pointer; }
-.overlay .box { display: grid; gap: 8px; max-width: 46ch; }
+.overlay .box { display: grid; gap: 8px; max-width: 48ch; }
 .overlay strong { font-family: var(--font-display); font-size: 22px; font-weight: 600; }
 .overlay span { color: var(--muted); }
 .touch-note { display: none; color: var(--over); font-size: 13px; }
@@ -70,28 +75,29 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 
 .results { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 18px; align-items: start; }
 @media (max-width: 760px) { .results { grid-template-columns: minmax(0, 1fr); } }
-.verdict { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px; display: grid; gap: 10px; }
+.verdict { background: var(--panel); border: 1px solid var(--accent); border-radius: 6px; padding: 18px; display: grid; gap: 10px; }
 .tag { justify-self: start; font: 500 11px var(--font-data); letter-spacing: .08em; text-transform: uppercase; padding: 3px 7px; border-radius: 3px; background: var(--panel-2); color: var(--muted); border: 1px solid var(--line); }
 .tag.live { color: var(--accent); border-color: var(--accent); }
 .big { font: 700 56px/1 var(--font-display); color: var(--accent); font-variant-numeric: tabular-nums; }
 .big-sub { font: 14px var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
 .verdict p { margin: 0; color: var(--muted); font-size: 14px; }
 .verdict p b { color: var(--fg); font-weight: 600; }
-.log { display: grid; gap: 14px; min-width: 0; }
-.chart { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px; overflow-x: auto; }
+.parts { list-style: none; margin: 0; padding: 10px 0 0; border-top: 1px solid var(--line); display: grid; gap: 6px; font: 13px var(--font-data); font-variant-numeric: tabular-nums; }
+.parts li { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; }
+.parts .w { color: var(--muted); }
+.parts .off { color: var(--muted); }
+.cards { display: grid; gap: 14px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: grid; gap: 6px; min-width: 0; }
+.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.card h3 { font: 600 16px var(--font-display); letter-spacing: .03em; margin: 0; }
+.card .val { font: 700 24px var(--font-display); color: var(--fg); font-variant-numeric: tabular-nums; }
+.card .val.none { color: var(--muted); font-size: 16px; font-weight: 500; }
+.card .sub { font: 12px var(--font-data); color: var(--muted); }
+.card .sub.warn { color: var(--over); }
+.chart { overflow-x: auto; }
 .chart svg { display: block; width: 100%; min-width: 420px; height: auto; }
-.table-scroll { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
-table { width: 100%; border-collapse: collapse; font: 13px var(--font-data); font-variant-numeric: tabular-nums; }
-th, td { padding: 9px 12px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
-th { color: var(--muted); font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
-th:first-child, td:first-child { text-align: left; }
-tr:last-child td { border-bottom: 0; }
-.pill { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 11px; font-weight: 500; }
-.pill.over { background: color-mix(in srgb, var(--over) 18%, transparent); color: var(--over); }
-.pill.under { background: color-mix(in srgb, var(--under) 18%, transparent); color: var(--under); }
-.pill.on { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
 
-.how { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.how { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
 .how div { border-top: 2px solid var(--line); padding-top: 10px; }
 .how h3 { font: 600 14px var(--font-display); letter-spacing: .03em; margin: 0 0 4px; }
 .how p { margin: 0; color: var(--muted); font-size: 14px; }
@@ -103,10 +109,18 @@ tr:last-child td { border-bottom: 0; }
   <header>
     <div class="eyebrow">Call of Duty sensitivity scale · 0.0066° per count</div>
     <h1>Warzone Sens Calibrator</h1>
-    <p class="lede">Flick to each target and click it. The page measures where your first fast movement stops: past the target or short of it. After each round it moves your sensitivity toward the value where your flicks land on target.</p>
+    <p class="lede">Three drills, one number. Flick reach checks whether your snaps land past or short of the target. Tracking and micro-adjust test five sens values each and find the one you aim best with. The full test runs all three and blends them into your overall sens.</p>
   </header>
 
   <section class="setup" aria-label="Setup">
+    <div class="field"><span class="label" id="mode-label">Test</span>
+      <div class="seg" role="radiogroup" aria-labelledby="mode-label">
+        <input type="radio" name="mode" id="m-full" value="full" checked><label for="m-full">Full test</label>
+        <input type="radio" name="mode" id="m-flick" value="flick"><label for="m-flick">Flick reach</label>
+        <input type="radio" name="mode" id="m-track" value="track"><label for="m-track">Tracking</label>
+        <input type="radio" name="mode" id="m-micro" value="micro"><label for="m-micro">Micro-adjust</label>
+      </div>
+    </div>
     <div class="field"><label for="dpi">Mouse DPI</label><input id="dpi" type="number" min="100" max="32000" step="50" value="5200"></div>
     <div class="field"><label for="sens0">Start sens</label><input id="sens0" type="number" min="0.05" max="30" step="0.05" value="1.5"><span class="hint" id="sens0-hint"></span></div>
     <div class="field"><label for="fov">FOV</label><input id="fov" type="number" min="60" max="120" step="1" value="120"></div>
@@ -114,53 +128,65 @@ tr:last-child td { border-bottom: 0; }
     <div class="field"><label for="gap">Next target</label><input id="gap" type="number" min="150" max="1500" step="50" value="350"><span class="hint">ms delay</span></div>
     <div class="actions">
       <button id="check" type="button">Check mouse scaling</button>
-      <button id="start" class="primary" type="button">Start calibration</button>
+      <button id="start" class="primary" type="button">Start</button>
     </div>
     <div class="status">
       <span class="chip"><span class="dot" id="raw-dot"></span><span id="raw-text">Raw input: not tested yet</span></span>
       <span class="chip"><span class="dot" id="scale-dot"></span><span id="scale-text">Mouse scaling: not checked</span></span>
+      <span class="chip" id="time-est"></span>
       <span class="touch-note">This needs a mouse and a desktop browser.</span>
     </div>
   </section>
 
   <div class="arena-wrap">
     <canvas id="arena" aria-label="Firing range"></canvas>
-    <div class="overlay" id="overlay"><div class="box"><strong id="ov-title">Ready when you are</strong><span id="ov-text">Set your DPI and a starting sens, then click here to start. Press Esc any time to pause.</span></div></div>
+    <div class="overlay" id="overlay"><div class="box"><strong id="ov-title">Ready when you are</strong><span id="ov-text"></span></div></div>
   </div>
 
   <section class="results" aria-label="Results">
     <div class="verdict" id="verdict"></div>
-    <div class="log">
-      <div class="chart" id="chart"></div>
-      <div class="table-scroll"><table id="table"></table></div>
-    </div>
+    <div class="cards" id="cards"></div>
   </section>
 
-  <section class="how" aria-label="Tips">
-    <div><h3>Flick, don't creep</h3><p>Move to each target in one quick motion, the way you'd snap to an enemy. Slow, careful aiming hides overshoot and undershoot.</p></div>
-    <div><h3>Reading the replay</h3><p>After each hit, the dashed ring shows where the target was and the X shows where your first fast movement stopped. The % is how far along the line to the target that X is. Corrections and the click itself don't count, and missing high or low is shown separately because it doesn't change your sens.</p></div>
-    <div><h3>Reach, not score</h3><p>Overshooting means your sens is too fast for your hand; stopping short means it's too slow. The page stops when two rounds in a row land within 6% of the target.</p></div>
-    <div><h3>Run it twice</h3><p>Muscle memory pulls toward your old sens. Run it again on another day, and if you're deliberately moving slower, treat the result as the top of your range.</p></div>
+  <section class="how" aria-label="How the drills work">
+    <div><h3>Flick reach</h3><p>Snap to each target in one motion. The X in the replay marks where your first fast movement stopped. Overshooting means the sens is too fast for your hand, stopping short means too slow. Sens adjusts each round until two rounds land within 6%.</p></div>
+    <div><h3>Tracking</h3><p>Keep the crosshair on a target that strafes and changes direction like a player. Five sens values, two blocks each, in shuffled order. The sens with the most time on target wins, smoothed with a curve fit so one lucky block can't decide it.</p></div>
+    <div><h3>Micro-adjust</h3><p>Small, close targets, like correcting onto a head at mid range. Same five-value test, scored by targets hit per minute with a penalty for misses. Too high a sens shows up here first.</p></div>
+    <div><h3>Overall sens</h3><p>Tracking counts 45%, flick reach 35% and micro-adjust 20%, because most Warzone fights are won by staying on target. Only drills you've run are included. Run the full test on another day to confirm.</p></div>
   </section>
 </main>
 
 <script>
 (() => {
-  const YAW = 0.0066;          // CoD degrees per count at sens 1
-  const HIT_DEG = 2.2;         // target radius in degrees
-  const TIMEOUT_MS = 6000, MAX_ROUNDS = 7, TOL = 0.06;
+  const YAW = 0.0066;                       // CoD degrees per count at sens 1
+  const HIT_DEG = 2.2, MICRO_R = 1.1, TRACK_R = 2.5;
+  const TIMEOUT_MS = 6000, MICRO_TIMEOUT = 4000, MAX_ROUNDS = 7, TOL = 0.06;
+  const TRACK_MS = 10000, SETTLE_MS = 1000, MICRO_PER = 8;
+  const BRACKET = [0.7, 0.84, 1, 1.19, 1.42], REPS = 2;
+  const WEIGHTS = { flick: 0.35, track: 0.45, micro: 0.2 };
+  const DRILLS = {
+    flick: { name: 'Flick reach', intro: 'Snap to each target in one quick motion and click it.' },
+    track: { name: 'Tracking', intro: 'Keep the crosshair on the strafing target. No clicking.' },
+    micro: { name: 'Micro-adjust', intro: 'Small, close targets. Click each one as fast as you can.' }
+  };
   const $ = id => document.getElementById(id);
   const canvas = $('arena'), ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
   const arenaWrap = document.querySelector('.arena-wrap');
 
-  const cfg = { dpi: 5200, startSens: 1.5, fov: 120, perRound: 12, gap: 350 };
-  let scale = 1;               // browser movement units per real mouse count
-  let saved = null;
+  const cfg = { dpi: 5200, startSens: 1.5, fov: 120, perRound: 12, gap: 350, mode: 'full' };
+  let scale = 1;                            // browser movement units per real mouse count
+  let saved = {};                           // finished drill results: { flick, track, micro }
   try {
     const s = JSON.parse(localStorage.getItem('wzcal') || 'null');
-    if (s) { Object.assign(cfg, s.cfg || {}); scale = s.scale || 1; saved = s.result || null; }
+    if (s) {
+      Object.assign(cfg, s.cfg || {}); scale = s.scale || 1;
+      const r = s.result || {};
+      saved = r.rounds ? { flick: { sens: r.final, rounds: r.rounds, dpi: r.dpi, date: r.date } } : r;
+    }
   } catch (e) {}
   $('dpi').value = cfg.dpi; $('sens0').value = cfg.startSens; $('fov').value = cfg.fov; $('per').value = cfg.perRound; $('gap').value = cfg.gap;
+  const modeInput = document.querySelector(`input[name="mode"][value="${cfg.mode}"]`);
+  if (modeInput) modeInput.checked = true;
 
   function persist() {
     try { localStorage.setItem('wzcal', JSON.stringify({ cfg, scale, result: saved })); } catch (e) {}
@@ -172,32 +198,68 @@ tr:last-child td { border-bottom: 0; }
     cfg.fov = num('fov', 60, 120, 120);
     cfg.perRound = Math.round(num('per', 6, 30, 12));
     cfg.gap = Math.round(num('gap', 150, 1500, 350));
+    cfg.mode = (document.querySelector('input[name="mode"]:checked') || {}).value || 'full';
     $('sens0-hint').textContent = cm360(cfg.startSens).toFixed(1) + ' cm/360';
+    const mins = { full: 9, flick: 4, track: 2.5, micro: 2.5 }[cfg.mode];
+    $('time-est').textContent = `About ${mins} min`;
     persist();
   }
   const cm360 = s => 360 / (YAW * s * cfg.dpi) * 2.54;
   const r2 = v => Math.round(v * 100) / 100;
   const median = a => { const b = [...a].sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
   const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN;
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   ['dpi', 'sens0', 'fov', 'per', 'gap'].forEach(id => $(id).addEventListener('input', () => { readInputs(); renderScale(); }));
+  document.querySelectorAll('input[name="mode"]').forEach(el => el.addEventListener('change', readInputs));
 
   // ---- session state ----
-  let S = null;                // { sens, rounds, cur, final }
-  let state = 'idle';          // idle | ready | gap | trial | between | paused | done | measureReady | measureArm | measure
-  let cam = { yaw: 0, pitch: 0 }, trial = null, gapUntil = 0, flash = null, ghost = null, between = null;
+  // S = { queue: ['flick','track','micro'], step, drill }
+  // flick drill:   { type, sens, rounds, cur: { trials } }
+  // bracket drill: { type, center, blocks: [sens...], bi, records, sens, cur }
+  let S = null;
+  let state = 'idle';  // idle | ready | intro | gap | trial | between | countdown | tracking | paused | done | measureReady | measureArm | measure
+  let cam = { yaw: 0, pitch: 0 }, trial = null, trk = null;
+  let gapUntil = 0, countUntil = 0, flash = null, ghost = null, between = null;
   let locked = false, measureSum = 0;
 
-  const newRound = sens => ({ sens, trials: [] });
+  function makeDrill(type) {
+    if (type === 'flick') return { type, sens: cfg.startSens, rounds: [], cur: { trials: [] } };
+    const center = cfg.mode === 'full' && saved.flick && S && S.ranFlick ? saved.flick.sens : cfg.startSens;
+    const blocks = [];
+    for (let r = 0; r < REPS; r++) blocks.push(...shuffle(BRACKET.map(m => r2(center * m))));
+    return { type, center, blocks, bi: 0, records: [], sens: blocks[0], cur: null };
+  }
 
-  function startCalibration() {
+  function startSession() {
     readInputs();
-    S = { sens: cfg.startSens, rounds: [], cur: newRound(cfg.startSens), final: null };
-    cam = { yaw: 0, pitch: 0 }; trial = null; between = null;
+    const queue = cfg.mode === 'full' ? ['flick', 'track', 'micro'] : [cfg.mode];
+    S = { queue, step: 0, ranFlick: false, drill: null };
+    S.drill = makeDrill(queue[0]);
+    cam = { yaw: 0, pitch: 0 }; trial = null; trk = null; between = null; ghost = null; flash = null;
     state = 'ready';
     renderResults(); updateOverlay();
   }
 
-  // ---- analysis ----
+  function beginDrill() {
+    const d = S.drill;
+    if (d.type === 'flick') { state = 'gap'; gapUntil = performance.now() + 500; }
+    else startBlock();
+  }
+
+  function startBlock() {
+    const d = S.drill;
+    d.sens = d.blocks[d.bi];
+    d.cur = { trials: [] };
+    trial = null; trk = null; ghost = null;
+    state = 'countdown'; countUntil = performance.now() + 1300;
+  }
+
+  function resume() {
+    if (S.drill.type === 'flick') { state = 'gap'; gapUntil = performance.now() + 700; }
+    else startBlock();                       // an interrupted block restarts from scratch
+  }
+
+  // ---- flick analysis ----
   function analyzeTrial(tr, tEnd) {
     const dy = tr.ty - tr.y0, dp = tr.tp - tr.p0, dist = Math.hypot(dy, dp);
     const ux = dy / dist, uy = dp / dist;
@@ -263,69 +325,175 @@ tr:last-child td { border-bottom: 0; }
     return nextSens(R[n - 1].sens, R[n - 1].reach);
   }
 
-  // ---- trials ----
+  // ---- bracket fit: score vs log(sens), quadratic, peak inside the tested range ----
+  function fitBest(records) {
+    const by = {};
+    records.forEach(r => { (by[r.sens] = by[r.sens] || []).push(r.score); });
+    const pts = Object.keys(by).map(k => ({ sens: +k, score: mean(by[k]) })).sort((a, b) => a.sens - b.sens);
+    const top = pts.reduce((m, p) => p.score > m.score ? p : m, pts[0]);
+    let best = null, curve = null;
+    if (pts.length >= 3) {
+      const xm = mean(pts.map(p => Math.log(p.sens)));
+      const xs = pts.map(p => Math.log(p.sens) - xm), ys = pts.map(p => p.score);
+      const sum = f => xs.reduce((a, x, i) => a + f(x, ys[i]), 0);
+      const s0 = xs.length, s1 = sum(x => x), s2 = sum(x => x * x), s3 = sum(x => x ** 3), s4 = sum(x => x ** 4);
+      const t0 = sum((x, y) => y), t1 = sum((x, y) => x * y), t2 = sum((x, y) => x * x * y);
+      const det3 = m => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+      const A = [[s0, s1, s2], [s1, s2, s3], [s2, s3, s4]], D = det3(A);
+      if (Math.abs(D) > 1e-12) {
+        const col = (k, v) => A.map((row, i) => row.map((c, j) => j === k ? v[i] : c));
+        const T = [t0, t1, t2];
+        const a = det3(col(0, T)) / D, b = det3(col(1, T)) / D, c = det3(col(2, T)) / D;
+        curve = { a, b, c, xm };
+        if (c < 0) {
+          const xp = -b / (2 * c);
+          if (xp >= xs[0] && xp <= xs[xs.length - 1]) best = Math.exp(xp + xm);
+        }
+      }
+    }
+    if (best === null) best = top.sens;
+    const edge = top.sens === pts[0].sens || top.sens === pts[pts.length - 1].sens;
+    return { sens: r2(best), edge, points: pts, curve };
+  }
+
+  function overall(sv) {
+    const parts = ['flick', 'track', 'micro'].filter(k => sv[k]).map(k => ({ k, s: sv[k].sens * (sv[k].dpi || cfg.dpi) / cfg.dpi, w: WEIGHTS[k] }));
+    if (!parts.length) return null;
+    const wsum = parts.reduce((a, p) => a + p.w, 0);
+    const sens = Math.exp(parts.reduce((a, p) => a + p.w * Math.log(p.s), 0) / wsum);
+    return { sens: r2(sens), parts: parts.map(p => ({ ...p, share: p.w / wsum })) };
+  }
+
+  // ---- targets (flick + micro) ----
   function spawn() {
-    const mag = 20 + Math.random() * 70, sign = Math.random() < 0.5 ? -1 : 1;
     const t0 = performance.now();
-    trial = {
-      t0, y0: cam.yaw, p0: cam.pitch,
-      ty: cam.yaw + sign * mag,
-      tp: Math.min(22, Math.max(-22, cam.pitch + (Math.random() * 24 - 12))),
-      samples: [{ t: t0, yaw: cam.yaw, pitch: cam.pitch }], misses: 0
-    };
+    let ty, tp, r, timeout;
+    if (S.drill.type === 'micro') {
+      const ang = Math.random() * Math.PI * 2, mag = 3 + Math.random() * 9;
+      ty = cam.yaw + Math.cos(ang) * mag; tp = Math.min(30, Math.max(-30, cam.pitch + Math.sin(ang) * mag));
+      r = MICRO_R; timeout = MICRO_TIMEOUT;
+    } else {
+      const mag = 20 + Math.random() * 70, sign = Math.random() < 0.5 ? -1 : 1;
+      ty = cam.yaw + sign * mag; tp = Math.min(22, Math.max(-22, cam.pitch + (Math.random() * 24 - 12)));
+      r = HIT_DEG; timeout = TIMEOUT_MS;
+    }
+    trial = { t0, y0: cam.yaw, p0: cam.pitch, ty, tp, r, timeout, samples: [{ t: t0, yaw: cam.yaw, pitch: cam.pitch }], misses: 0 };
     state = 'trial';
   }
 
   function finishTrial(hit, t) {
-    trial.samples.push({ t, yaw: cam.yaw, pitch: cam.pitch });
-    const a = analyzeTrial(trial, t);
-    a.hit = hit; a.misses = trial.misses;
-    S.cur.trials.push(a);
-    const until = performance.now() + cfg.gap + 150;
-    if (a.valid) {
-      const pct = Math.round((a.reach - 1) * 100), color = kind(a.reach) === 'on' ? 'good' : kind(a.reach);
-      const side = a.side >= 0.5 ? `  ·  ${a.side.toFixed(1)}° ${a.sideDir}` : '';
-      const main = color === 'good' ? `On target ${pct >= 0 ? '+' : ''}${pct}%` : pct > 0 ? `${pct}% past` : `${-pct}% short`;
-      flash = { text: main + side, color, until };
-      ghost = { ty: trial.ty, tp: trial.tp, a, color, until };
-    } else { flash = { text: hit ? 'Too slow to read, flick faster' : 'Timed out', color: 'muted', until }; ghost = null; }
+    const d = S.drill, tr = trial;
+    tr.samples.push({ t, yaw: cam.yaw, pitch: cam.pitch });
+    const a = analyzeTrial(tr, t), until = performance.now() + cfg.gap + 150;
     trial = null;
-    if (S.cur.trials.length >= cfg.perRound) endRound();
-    else { state = 'gap'; gapUntil = performance.now() + cfg.gap; }
+    if (d.type === 'flick') {
+      a.hit = hit; a.misses = tr.misses;
+      d.cur.trials.push(a);
+      if (a.valid) {
+        const pct = Math.round((a.reach - 1) * 100), color = kind(a.reach) === 'on' ? 'good' : kind(a.reach);
+        const side = a.side >= 0.5 ? `  ·  ${a.side.toFixed(1)}° ${a.sideDir}` : '';
+        const main = color === 'good' ? `On target ${pct >= 0 ? '+' : ''}${pct}%` : pct > 0 ? `${pct}% past` : `${-pct}% short`;
+        flash = { text: main + side, color, until };
+        ghost = { ty: tr.ty, tp: tr.tp, r: tr.r, a, color, until };
+      } else { flash = { text: hit ? 'Too slow to read, flick faster' : 'Timed out', color: 'muted', until }; ghost = null; }
+      if (d.cur.trials.length >= cfg.perRound) return endRound();
+    } else {
+      const time = hit ? t - tr.t0 : MICRO_TIMEOUT;
+      d.cur.trials.push({ time, hit, misses: tr.misses, corr: a.valid ? a.corrections : 0 });
+      flash = { text: hit ? `${Math.round(time)} ms${tr.misses ? ` · ${tr.misses} miss` : ''}` : 'Timed out', color: hit ? 'fg' : 'muted', until };
+      ghost = null;
+      if (d.cur.trials.length >= MICRO_PER) return endBlock();
+    }
+    state = 'gap'; gapUntil = performance.now() + cfg.gap;
   }
 
   function endRound() {
-    const tr = S.cur.trials;
+    const d = S.drill, tr = d.cur.trials;
     const pool = (tr.length >= 6 ? tr.slice(1) : tr).filter(t => t.valid);
-    if (pool.length < 3) {
-      between = { repeat: true };
-      S.cur = newRound(S.sens); state = 'between';
-      return;
-    }
+    if (pool.length < 3) { between = { repeat: true }; d.cur = { trials: [] }; state = 'between'; return; }
     const hits = tr.filter(t => t.hit);
     const r = {
-      sens: S.sens, reach: median(pool.map(t => t.reach)),
+      sens: d.sens, reach: median(pool.map(t => t.reach)),
       time: mean(hits.map(t => t.time)), corr: mean(pool.map(t => t.corrections)),
       misses: tr.reduce((x, t) => x + t.misses, 0), n: pool.length
     };
-    S.rounds.push(r);
-    const R = S.rounds, last2 = R.length >= 2 && Math.abs(R[R.length - 1].reach - 1) <= TOL && Math.abs(R[R.length - 2].reach - 1) <= TOL;
-    if (last2 || R.length >= MAX_ROUNDS) {
-      S.final = finalSens(R);
-      saved = { rounds: R, final: S.final, dpi: cfg.dpi, date: new Date().toISOString().slice(0, 10) };
-      persist();
+    d.rounds.push(r);
+    const R = d.rounds, ok = x => Math.abs(x.reach - 1) <= TOL;
+    if ((R.length >= 2 && ok(R[R.length - 1]) && ok(R[R.length - 2])) || R.length >= MAX_ROUNDS) {
+      d.result = { sens: finalSens(R), rounds: R };
+      S.ranFlick = true;
+      return finishDrill();
+    }
+    const next = nextSens(d.sens, r.reach);
+    between = { r, next };
+    d.sens = next; d.cur = { trials: [] }; state = 'between';
+    renderResults();
+  }
+
+  // ---- tracking ----
+  function startTracking(now) {
+    const p0 = Math.max(-20, Math.min(20, cam.pitch));
+    trk = { t0: now, last: now, ty: cam.yaw, tp: p0, p0, c: cam.yaw, v: 0, vt: 0, next: now + 400,
+            on: 0, total: 0, err: 0, lag: 0, lagT: 0 };
+    state = 'tracking';
+  }
+  function stepTracking(now) {
+    const T = trk, dt = Math.min(0.05, (now - T.last) / 1000); T.last = now;
+    // Strafe like a player: pick a new speed and direction every 0.25–0.9 s, accelerate into it.
+    if (now >= T.next) { T.vt = (Math.random() < 0.5 ? -1 : 1) * (18 + Math.random() * 40); T.next = now + 250 + Math.random() * 650; }
+    if (T.ty - T.c > 35) T.vt = -Math.abs(T.vt); else if (T.ty - T.c < -35) T.vt = Math.abs(T.vt);
+    const maxDv = 500 * dt; T.v += Math.max(-maxDv, Math.min(maxDv, T.vt - T.v));
+    T.ty += T.v * dt;
+    const el = (now - T.t0) / 1000;
+    T.tp = T.p0 + 4 * Math.sin(el * 0.9) + 1.5 * Math.sin(el * 2.3);
+    if (now - T.t0 > SETTLE_MS) {
+      const e = angTo(T.ty, T.tp);
+      T.total += dt; T.err += e * dt; if (e <= TRACK_R) T.on += dt;
+      if (Math.abs(T.v) > 5) { T.lag += (T.ty - cam.yaw) * Math.sign(T.v) * dt; T.lagT += dt; }   // + = crosshair behind
+    }
+    if (now - T.t0 >= SETTLE_MS + TRACK_MS) endBlock();
+  }
+
+  // ---- bracket blocks (tracking + micro) ----
+  function endBlock() {
+    const d = S.drill;
+    let rec;
+    if (d.type === 'track') {
+      const T = trk; trk = null;
+      rec = { sens: d.sens, score: T.total ? T.on / T.total : 0, err: T.total ? T.err / T.total : 0, lag: T.lagT ? T.lag / T.lagT : 0 };
+      flash = { text: `${Math.round(rec.score * 100)}% on target`, color: 'fg', until: performance.now() + 1300 };
+    } else {
+      const tr = d.cur.trials, misses = tr.reduce((x, t) => x + t.misses, 0), time = mean(tr.map(t => t.time));
+      rec = { sens: d.sens, time, misses, corr: mean(tr.map(t => t.corr)), score: 60000 / (time + 150 * misses / tr.length) };
+    }
+    d.records.push(rec);
+    d.bi++;
+    if (d.bi < d.blocks.length) { startBlock(); renderResults(); }
+    else {
+      const fit = fitBest(d.records), lagAvg = d.type === 'track' ? mean(d.records.map(r => r.lag)) : undefined;
+      d.result = { ...fit, center: d.center, lag: lagAvg };
+      finishDrill();
+    }
+  }
+
+  function finishDrill() {
+    const d = S.drill;
+    saved[d.type] = { ...d.result, dpi: cfg.dpi, date: new Date().toISOString().slice(0, 10) };
+    persist();
+    S.step++;
+    if (S.step < S.queue.length) {
+      S.drill = makeDrill(S.queue[S.step]);
+      state = locked ? 'intro' : 'ready';
+    } else {
       state = 'done';
       if (document.pointerLockElement) document.exitPointerLock();
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    } else {
-      const next = nextSens(S.sens, r.reach);
-      between = { r, next };
-      S.sens = next; S.cur = newRound(next); state = 'between';
     }
     renderResults(); updateOverlay();
   }
 
   // ---- input ----
+  let rawInput = null;
   async function lock() {
     // Fullscreen lets the browser skip compositing the page around the canvas, which cuts latency.
     if (!document.fullscreenElement && arenaWrap.requestFullscreen) arenaWrap.requestFullscreen().catch(() => {});
@@ -339,15 +507,15 @@ tr:last-child td { border-bottom: 0; }
     }
     renderRaw();
   }
-  let rawInput = null;
 
   document.addEventListener('pointerlockchange', () => {
     locked = document.pointerLockElement === canvas;
     if (locked) {
-      if (state === 'ready' || state === 'paused') { state = 'gap'; gapUntil = performance.now() + 700; }
+      if (state === 'ready') state = 'intro';
+      else if (state === 'paused') resume();
       else if (state === 'measureReady') state = 'measureArm';
     } else {
-      if (state === 'trial' || state === 'gap') { trial = null; state = 'paused'; }
+      if (['trial', 'gap', 'tracking', 'countdown'].includes(state)) { trial = null; trk = null; state = 'paused'; }
       else if (state === 'measureArm' || state === 'measure') state = 'measureReady';
     }
     updateOverlay();
@@ -359,9 +527,8 @@ tr:last-child td { border-bottom: 0; }
     const dx = e.movementX || 0, dy = e.movementY || 0;
     if (!dx && !dy) return;
     if (state === 'measure') { measureSum += dx; return; }
-    if (state === 'measureArm') return;
-    if (!S) return;
-    const k = YAW * S.sens / scale;
+    if (state === 'measureArm' || !S) return;
+    const k = YAW * S.drill.sens / scale;
     cam.yaw += dx * k;
     cam.pitch = Math.min(80, Math.max(-80, cam.pitch - dy * k));
     if (state === 'trial' && trial) trial.samples.push({ t: e.timeStamp, yaw: cam.yaw, pitch: cam.pitch });
@@ -373,24 +540,26 @@ tr:last-child td { border-bottom: 0; }
     if (!locked || e.button !== 0) return;
     const t = e.timeStamp;
     if (state === 'trial') {
-      if (angTo(trial.ty, trial.tp) <= HIT_DEG) finishTrial(true, t); else trial.misses++;
+      if (angTo(trial.ty, trial.tp) <= trial.r) finishTrial(true, t); else trial.misses++;
     } else if (state === 'between') { between = null; state = 'gap'; gapUntil = performance.now() + 500; }
+    else if (state === 'intro') beginDrill();
     else if (state === 'measureArm') { measureSum = 0; state = 'measure'; }
     else if (state === 'measure') finishMeasure();
   });
 
   $('overlay').addEventListener('click', () => {
-    if (state === 'idle' || state === 'done') startCalibration();
-    if (state === 'ready' || state === 'paused' || state === 'between' || state === 'measureReady') lock();
+    if (state === 'idle' || state === 'done') startSession();
+    if (['ready', 'intro', 'paused', 'between', 'measureReady'].includes(state)) lock();
   });
   canvas.addEventListener('click', () => { if (!locked && state !== 'idle' && state !== 'done') lock(); });
-  $('start').addEventListener('click', () => { startCalibration(); lock(); });
+  $('start').addEventListener('click', () => { startSession(); lock(); });
   $('check').addEventListener('click', () => { readInputs(); state = 'measureReady'; updateOverlay(); lock(); });
 
   function finishMeasure() {
     const counts = Math.abs(measureSum), expected = cfg.dpi * 10 / 2.54;
     document.exitPointerLock();
-    state = S ? (S.final ? 'done' : 'paused') : 'idle';
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    state = S ? (S.step >= S.queue.length ? 'done' : 'paused') : 'idle';
     if (counts < expected * 0.2) {
       setOverlay('Scaling check didn’t register', 'Move the mouse a full 10 cm along a ruler between the two clicks, then try again.');
       return;
@@ -407,11 +576,12 @@ tr:last-child td { border-bottom: 0; }
   function setOverlay(title, text) { $('ov-title').textContent = title; $('ov-text').textContent = text; $('overlay').hidden = false; }
   function updateOverlay() {
     if (locked) { $('overlay').hidden = true; return; }
-    const rn = S ? S.rounds.length + 1 : 1;
-    if (state === 'idle') setOverlay('Ready when you are', 'Set your DPI and a starting sens, then click here to start. Press Esc any time to pause.');
-    else if (state === 'ready') setOverlay(`Click to start round ${rn}`, `Sens ${S.sens.toFixed(2)} · ${cm360(S.sens).toFixed(1)} cm/360. Your mouse locks to the range; press Esc to pause.`);
-    else if (state === 'paused' || state === 'between') setOverlay(`Paused · round ${rn}`, 'Click to lock the mouse and carry on.');
-    else if (state === 'done') setOverlay(`Your sens: ${S.final.toFixed(2)}`, `${cm360(S.final).toFixed(1)} cm/360 at ${cfg.dpi} DPI. Details are below. Click to run it again.`);
+    const d = S && S.drill, name = d ? DRILLS[d.type].name : '';
+    const stepTxt = S && S.queue.length > 1 ? ` (${Math.min(S.step + 1, S.queue.length)} of ${S.queue.length})` : '';
+    if (state === 'idle') setOverlay('Ready when you are', 'Pick a test, set your DPI and starting sens, then click here. Press Esc any time to pause.');
+    else if (state === 'ready' || state === 'intro') setOverlay(`${name}${stepTxt}`, `${DRILLS[d.type].intro} Click to lock the mouse and begin.`);
+    else if (state === 'paused' || state === 'between') setOverlay(`Paused · ${name}`, d.type === 'flick' ? 'Click to lock the mouse and carry on.' : 'Click to carry on. The interrupted block starts over.');
+    else if (state === 'done') { const o = overall(saved); setOverlay(o ? `Your sens: ${o.sens.toFixed(2)}` : 'Done', o ? `${cm360(o.sens).toFixed(1)} cm/360 at ${cfg.dpi} DPI. Details are below. Click to run it again.` : 'Click to run it again.'); }
     else if (state === 'measureReady') setOverlay('Mouse scaling check', 'Click to lock the mouse. You’ll need a ruler.');
   }
   function renderRaw() {
@@ -448,14 +618,14 @@ tr:last-child td { border-bottom: 0; }
   new ResizeObserver(resize).observe(canvas);
 
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  let C = {};
-  function colors() { C = { accent: css('--accent'), over: css('--over'), under: css('--under'), good: css('--good'), fg: css('--fg'), muted: css('--muted') }; }
-  colors();
+  const C = { accent: css('--accent'), over: css('--over'), under: css('--under'), good: css('--good'), fg: css('--fg'), muted: css('--muted') };
+  const MONO = s => `500 ${s}px "IBM Plex Mono", Consolas, monospace`, DISP = s => `600 ${s}px "Chakra Petch", "Segoe UI", sans-serif`;
 
   function draw(now) {
     if (!W) return;
     const B = basis(), tanH = Math.tan(rad(cfg.fov / 2)), half = W / 2;
     const P = d => { const z = dot3(d, B.f); if (z <= 0.03) return null; return [half + dot3(d, B.r) / z / tanH * half, H / 2 - dot3(d, B.u) / z / tanH * half, z]; };
+    const rpxAt = (deg, z) => Math.tan(rad(deg)) / tanH * half / z;
 
     ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
 
@@ -476,9 +646,8 @@ tr:last-child td { border-bottom: 0; }
     if (ghost && now < ghost.until && state !== 'trial') {
       const gc = C[ghost.color] || C.muted, tpj = P(dirOf(ghost.ty, ghost.tp));
       if (tpj) {
-        const rpx = Math.tan(rad(HIT_DEG)) / tanH * half / tpj[2];
         ctx.strokeStyle = C.accent; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
-        ctx.beginPath(); ctx.arc(tpj[0], tpj[1], rpx, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(tpj[0], tpj[1], rpxAt(ghost.r, tpj[2]), 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
       }
       ctx.strokeStyle = gc; ctx.lineWidth = 2; ctx.globalAlpha = 0.5;
       ctx.beginPath(); seg(ghost.a.path.map(p => dirOf(p[0], p[1]))); ctx.stroke(); ctx.globalAlpha = 1;
@@ -490,22 +659,23 @@ tr:last-child td { border-bottom: 0; }
       }
     }
 
-    if (state === 'trial' && trial) {
-      const d = dirOf(trial.ty, trial.tp), p = P(d);
-      const visible = p && p[0] > -20 && p[0] < W + 20 && p[1] > -20 && p[1] < H + 20;
-      if (visible) {
-        const rpx = Math.tan(rad(HIT_DEG)) / tanH * half / p[2];
-        ctx.fillStyle = C.accent; ctx.globalAlpha = 0.9;
+    const target = (ty, tp, rdeg, color) => {
+      const d = dirOf(ty, tp), p = P(d);
+      if (p && p[0] > -20 && p[0] < W + 20 && p[1] > -20 && p[1] < H + 20) {
+        const rpx = rpxAt(rdeg, p[2]);
+        ctx.fillStyle = color; ctx.globalAlpha = 0.9;
         ctx.beginPath(); ctx.arc(p[0], p[1], rpx, 0, Math.PI * 2); ctx.fill();
         ctx.globalAlpha = 1; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(p[0], p[1], rpx * 0.35, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(p[0], p[1], Math.max(2, rpx * 0.35), 0, Math.PI * 2); ctx.stroke();
       } else {
-        const sx = dot3(d, B.r), sy = dot3(d, B.u), a = Math.atan2(-sy, sx);
+        const a = Math.atan2(-dot3(d, B.u), dot3(d, B.r));
         const cx = W / 2 + Math.cos(a) * (W / 2 - 34), cy = H / 2 + Math.sin(a) * (H / 2 - 34);
-        ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); ctx.fillStyle = C.accent;
+        ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); ctx.fillStyle = color;
         ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-8, -10); ctx.lineTo(-8, 10); ctx.closePath(); ctx.fill(); ctx.restore();
       }
-    }
+    };
+    if (state === 'trial' && trial) target(trial.ty, trial.tp, trial.r, C.accent);
+    if (state === 'tracking' && trk) target(trk.ty, trk.tp, TRACK_R, angTo(trk.ty, trk.tp) <= TRACK_R ? C.good : C.accent);
 
     // crosshair
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
@@ -515,13 +685,26 @@ tr:last-child td { border-bottom: 0; }
 
     // HUD
     const fs = Math.max(12, Math.min(16, W / 60));
-    ctx.font = `500 ${fs}px "IBM Plex Mono", Consolas, monospace`;
-    ctx.textBaseline = 'top';
-    if (S && state !== 'done') {
+    ctx.font = MONO(fs); ctx.textBaseline = 'top';
+    if (S && S.drill && state !== 'done') {
+      const d = S.drill;
       ctx.fillStyle = C.fg; ctx.textAlign = 'left';
-      ctx.fillText(`ROUND ${S.rounds.length + 1}  ·  SENS ${S.sens.toFixed(2)}  ·  ${cm360(S.sens).toFixed(1)} CM/360`, 14, 12);
+      ctx.fillText(`${DRILLS[d.type].name.toUpperCase()}  ·  SENS ${d.sens.toFixed(2)}  ·  ${cm360(d.sens).toFixed(1)} CM/360`, 14, 12);
       ctx.textAlign = 'right';
-      ctx.fillText(`FLICK ${Math.min(cfg.perRound, S.cur.trials.length + (state === 'trial' ? 1 : 0))}/${cfg.perRound}`, W - 14, 12);
+      let right = '';
+      if (d.type === 'flick') right = `ROUND ${d.rounds.length + 1}  ·  FLICK ${Math.min(cfg.perRound, d.cur.trials.length + (state === 'trial' ? 1 : 0))}/${cfg.perRound}`;
+      else if (d.type === 'micro') right = `BLOCK ${Math.min(d.bi + 1, d.blocks.length)}/${d.blocks.length}  ·  TARGET ${Math.min(MICRO_PER, d.cur ? d.cur.trials.length + (state === 'trial' ? 1 : 0) : 0)}/${MICRO_PER}`;
+      else {
+        right = `BLOCK ${Math.min(d.bi + 1, d.blocks.length)}/${d.blocks.length}`;
+        if (state === 'tracking' && trk) {
+          const left = Math.max(0, SETTLE_MS + TRACK_MS - (now - trk.t0)) / 1000;
+          right += `  ·  ${left.toFixed(1)}s  ·  ${trk.total ? Math.round(trk.on / trk.total * 100) : 0}% ON`;
+          ctx.fillStyle = 'rgba(141,154,158,0.25)'; ctx.fillRect(0, H - 4, W, 4);
+          ctx.fillStyle = C.accent; ctx.fillRect(0, H - 4, W * Math.min(1, (now - trk.t0) / (SETTLE_MS + TRACK_MS)), 4);
+          ctx.fillStyle = C.fg;
+        }
+      }
+      ctx.fillText(right, W - 14, 12);
     }
     if (locked) {
       ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillStyle = fps < 100 ? C.over : C.muted;
@@ -530,14 +713,23 @@ tr:last-child td { border-bottom: 0; }
     }
     if (flash && now < flash.until) {
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = `600 ${fs * 1.5}px "Chakra Petch", "Segoe UI", sans-serif`;
+      ctx.font = DISP(fs * 1.5);
       ctx.fillStyle = C[flash.color] || C.muted;
       ctx.fillText(flash.text, W / 2, H * 0.68);
     }
-    if (locked && state === 'between') {
-      panel(between.repeat
-        ? ['Not enough clean flicks', 'Snap to each target in one quick motion.', 'Click to repeat this round.']
-        : [roundLine(between.r), `Next: sens ${between.next.toFixed(2)}  (${cm360(between.next).toFixed(1)} cm/360)`, 'Click to start the next round.'], fs);
+    if (locked && S && S.drill) {
+      const d = S.drill, name = DRILLS[d.type].name;
+      const stepTxt = S.queue.length > 1 ? `  ·  ${S.step + 1} of ${S.queue.length}` : '';
+      if (state === 'intro') {
+        const prev = S.step > 0 ? `${DRILLS[S.queue[S.step - 1]].name} done: ${saved[S.queue[S.step - 1]].sens.toFixed(2)}.  ` : '';
+        panel([name + stepTxt, DRILLS[d.type].intro, prev + 'Click to start.'], fs);
+      } else if (state === 'between') {
+        panel(between.repeat
+          ? ['Not enough clean flicks', 'Snap to each target in one quick motion.', 'Click to repeat this round.']
+          : [roundLine(between.r), `Next: sens ${between.next.toFixed(2)}  (${cm360(between.next).toFixed(1)} cm/360)`, 'Click to start the next round.'], fs);
+      } else if (state === 'countdown') {
+        panel([`${name}  ·  block ${d.bi + 1} of ${d.blocks.length}`, `Sens ${d.sens.toFixed(2)}  (${cm360(d.sens).toFixed(1)} cm/360)`, d.type === 'track' ? 'Get on the target and stay there.' : 'Get ready.'], fs);
+      }
     }
     if (locked && (state === 'measureArm' || state === 'measure')) {
       panel(state === 'measureArm'
@@ -550,16 +742,15 @@ tr:last-child td { border-bottom: 0; }
     return Math.abs(r.reach - 1) <= TOL ? `Round done: on target (${pct >= 0 ? '+' : ''}${pct}%)`
       : pct > 0 ? `Round done: you landed ${pct}% past the target` : `Round done: you stopped ${-pct}% short`;
   }
+  function fitFont(text, maxW, font, size) { ctx.font = font(size); while (size > 9 && ctx.measureText(text).width > maxW) { size -= 1; ctx.font = font(size); } }
   function panel(lines, fs) {
-    const w = Math.min(W - 40, 560), h = fs * 7.2, x = (W - w) / 2, y = (H - h) / 2;
+    const w = Math.min(W - 40, 600), h = fs * 7.2, x = (W - w) / 2, y = (H - h) / 2, inner = w - 32;
     ctx.fillStyle = 'rgba(8,12,14,0.86)'; ctx.fillRect(x, y, w, h);
     ctx.strokeStyle = C.accent; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y + .5, w - 1, h - 1);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = `600 ${fs * 1.25}px "Chakra Petch", "Segoe UI", sans-serif`; ctx.fillStyle = C.fg;
-    ctx.fillText(lines[0], W / 2, y + h * 0.27);
-    ctx.font = `500 ${fs}px "IBM Plex Mono", Consolas, monospace`; ctx.fillStyle = C.accent;
-    ctx.fillText(lines[1], W / 2, y + h * 0.55);
-    ctx.fillStyle = C.muted; ctx.fillText(lines[2], W / 2, y + h * 0.78);
+    fitFont(lines[0], inner, DISP, fs * 1.25); ctx.fillStyle = C.fg; ctx.fillText(lines[0], W / 2, y + h * 0.27);
+    fitFont(lines[1], inner, MONO, fs); ctx.fillStyle = C.accent; ctx.fillText(lines[1], W / 2, y + h * 0.55);
+    fitFont(lines[2], inner, MONO, fs); ctx.fillStyle = C.muted; ctx.fillText(lines[2], W / 2, y + h * 0.78);
   }
 
   let fps = 0, frames = 0, fpsAt = 0;
@@ -567,80 +758,132 @@ tr:last-child td { border-bottom: 0; }
     frames++;
     if (now - fpsAt >= 500) { fps = Math.round(frames * 1000 / (now - fpsAt)); frames = 0; fpsAt = now; }
     if (state === 'gap' && now >= gapUntil) spawn();
-    if (state === 'trial' && trial && now - trial.t0 > TIMEOUT_MS) finishTrial(false, now);
+    if (state === 'trial' && trial && now - trial.t0 > trial.timeout) finishTrial(false, now);
+    if (state === 'countdown' && now >= countUntil) {
+      if (S.drill.type === 'track') startTracking(now); else { state = 'gap'; gapUntil = now; }
+    }
+    if (state === 'tracking' && trk) stepTracking(now);
     draw(now);
     requestAnimationFrame(loop);
   }
 
   // ---- results ----
+  const ex = (sens, score) => ({ sens, score });
   const EXAMPLE = {
-    rounds: [
-      { sens: 1.5, reach: 0.81, time: 812, corr: 1.7, misses: 3, n: 11 },
-      { sens: 1.79, reach: 0.92, time: 744, corr: 1.3, misses: 2, n: 11 },
-      { sens: 1.92, reach: 1.04, time: 701, corr: 1.0, misses: 1, n: 11 },
-      { sens: 1.86, reach: 0.98, time: 688, corr: 0.9, misses: 1, n: 11 }
-    ], final: 1.87, dpi: 5200
+    flick: { sens: 1.87, dpi: 5200, rounds: [
+      { sens: 1.5, reach: 0.81 }, { sens: 1.79, reach: 0.92 }, { sens: 1.92, reach: 1.04 }, { sens: 1.86, reach: 0.98 }] },
+    track: { dpi: 5200, lag: 0.6, ...fitBest([ex(1.31, .49), ex(1.57, .57), ex(1.87, .61), ex(2.23, .58), ex(2.66, .47), ex(1.31, .52), ex(1.57, .59), ex(1.87, .60), ex(2.23, .55), ex(2.66, .50)]) },
+    micro: { dpi: 5200, ...fitBest([ex(1.31, 61), ex(1.57, 70), ex(1.87, 72), ex(2.23, 66), ex(2.66, 57), ex(1.31, 64), ex(1.57, 72), ex(1.87, 70), ex(2.23, 63), ex(2.66, 55)]) }
   };
   const kind = r => Math.abs(r - 1) <= TOL ? 'on' : r > 1 ? 'over' : 'under';
-  const kindLabel = r => { const p = Math.round((r - 1) * 100); return Math.abs(r - 1) <= TOL ? `On target ${p >= 0 ? '+' : ''}${p}%` : p > 0 ? `${p}% past` : `${-p}% short`; };
+  const c360At = (s, dpi) => (360 / (YAW * s * dpi) * 2.54).toFixed(1);
 
   function renderResults() {
-    let data, mode;
-    if (S && S.rounds.length) { data = { rounds: S.rounds, final: S.final, dpi: cfg.dpi }; mode = S.final ? 'mine' : 'live'; }
-    else if (S) { data = { rounds: [], final: null, dpi: cfg.dpi }; mode = 'live'; }
-    else if (saved) { data = saved; mode = 'saved'; }
-    else { data = EXAMPLE; mode = 'example'; }
-    const c360 = s => (360 / (YAW * s * data.dpi) * 2.54).toFixed(1);
-
+    const hasSaved = saved.flick || saved.track || saved.micro;
+    const isExample = !hasSaved && !S;
+    const sv = isExample ? EXAMPLE : saved;
+    const o = overall(sv);
+    const running = S && state !== 'done' && state !== 'idle';
     const v = $('verdict');
-    if (mode === 'live' && !data.final) {
-      v.innerHTML = `<span class="tag live">In progress</span>
-        <div class="big">${S.sens.toFixed(2)}</div>
-        <div class="big-sub">testing now · ${c360(S.sens)} cm/360</div>
-        <p>Round ${S.rounds.length + 1} of up to ${MAX_ROUNDS}. The page stops once two rounds in a row land within ${Math.round(TOL * 100)}% of the target.</p>`;
+    let html = '';
+    if (running) {
+      const d = S.drill;
+      html += `<span class="tag live">In progress</span>
+        <div class="big">${d.sens.toFixed(2)}</div>
+        <div class="big-sub">testing now · ${cm360(d.sens).toFixed(1)} cm/360</div>
+        <p><b>${DRILLS[d.type].name}</b>${S.queue.length > 1 ? `, drill ${S.step + 1} of ${S.queue.length}` : ''}. ${d.type === 'flick' ? `Round ${d.rounds.length + 1}; stops when two rounds land within ${Math.round(TOL * 100)}%.` : `Block ${Math.min(d.bi + 1, d.blocks.length)} of ${d.blocks.length}.`}</p>`;
+      if (o) html += `<p>Overall so far: <b>${o.sens.toFixed(2)}</b></p>`;
+    } else if (o) {
+      html += `${isExample ? '<span class="tag">Example</span>' : '<span class="tag live">Your overall sens</span>'}
+        <div class="big">${o.sens.toFixed(2)}</div>
+        <div class="big-sub">${cm360(o.sens).toFixed(1)} cm/360 at ${cfg.dpi} DPI</div>
+        <p>Set <b>Mouse Sensitivity</b> to <b>${o.sens.toFixed(2)}</b> in Warzone and keep <b>ADS multiplier at 1.00</b>.</p>
+        <p>${isExample ? 'Sample results so you can see the output. Pick a test and press Start to get your own.' : o.parts.length < 3 ? 'Run the full test to include every drill.' : 'Run the full test again on another day to confirm.'}</p>`;
     } else {
-      const tag = mode === 'example' ? '<span class="tag">Example run</span>' : mode === 'saved' ? `<span class="tag">Last run · ${data.date || ''}</span>` : '<span class="tag live">Your result</span>';
-      v.innerHTML = `${tag}
-        <div class="big">${data.final.toFixed(2)}</div>
-        <div class="big-sub">${c360(data.final)} cm/360 at ${data.dpi} DPI</div>
-        <p>Set <b>Mouse Sensitivity</b> to <b>${data.final.toFixed(2)}</b> in Warzone and keep <b>ADS multiplier at 1.00</b>.</p>
-        <p>${mode === 'example' ? 'This is a sample so you can see the output. Press Start calibration to get your own.' : 'This is where your flicks land on target today. Run it again on another day to confirm.'}</p>`;
+      html += `<span class="tag">No results yet</span><p>Pick a test and press Start.</p>`;
     }
+    const parts = o ? Object.fromEntries(o.parts.map(p => [p.k, p])) : {};
+    html += `<ul class="parts">${['flick', 'track', 'micro'].map(k => parts[k]
+      ? `<li><span>${DRILLS[k].name}</span><span>${parts[k].s.toFixed(2)}</span><span class="w">${Math.round(parts[k].share * 100)}%</span></li>`
+      : `<li class="off"><span>${DRILLS[k].name}</span><span>not run</span><span class="w">0%</span></li>`).join('')}</ul>`;
+    v.innerHTML = html;
 
-    const R = data.rounds;
-    $('table').innerHTML = `<thead><tr><th>Round</th><th>Sens</th><th>cm/360</th><th>First flick</th><th>Time to hit</th><th>Corrections</th><th>Misses</th></tr></thead><tbody>${
-      R.length ? R.map((r, i) => `<tr><td>${i + 1}</td><td>${r.sens.toFixed(2)}</td><td>${c360(r.sens)}</td><td><span class="pill ${kind(r.reach)}">${kindLabel(r.reach)}</span></td><td>${isFinite(r.time) ? Math.round(r.time) + ' ms' : '–'}</td><td>${r.corr.toFixed(1)}</td><td>${r.misses}</td></tr>`).join('')
-      : `<tr><td colspan="7" style="text-align:left;color:var(--muted)">Rounds show up here as you finish them.</td></tr>`}</tbody>`;
-
-    $('chart').innerHTML = chartSVG(R);
+    $('cards').innerHTML = ['flick', 'track', 'micro'].map(k => card(k, sv[k], isExample)).join('');
   }
 
-  function chartSVG(R) {
-    const w = 640, h = 230, L = 52, Rt = 18, T = 26, Bm = 44;
+  function card(k, r, isEx) {
+    const name = DRILLS[k].name;
+    if (!r) return `<article class="card"><div class="card-head"><h3>${name}</h3><span class="val none">Not run yet</span></div>
+      <div class="sub">${k === 'flick' ? 'Finds the sens where your flicks land on target.' : k === 'track' ? 'Tests five sens values for time on a strafing target.' : 'Tests five sens values on small, close targets.'}</div></article>`;
+    const dpi = r.dpi || cfg.dpi;
+    let sub = `${c360At(r.sens, dpi)} cm/360 at ${dpi} DPI${r.date && !isEx ? ` · ${r.date}` : ''}`, warn = '';
+    if (k === 'track' && isFinite(r.lag) && Math.abs(r.lag) >= 0.3) sub += ` · on average you ${r.lag > 0 ? 'trailed' : 'ran ahead of'} the target by ${Math.abs(r.lag).toFixed(1)}°`;
+    if (k !== 'flick' && r.edge) warn = `<div class="sub warn">Your best score was at the edge of the tested range. Run this drill again with Start sens set to ${r.sens.toFixed(2)}.</div>`;
+    const chart = k === 'flick' ? reachChart(r.rounds || [])
+      : k === 'track' ? scoreChart(r, 'TIME ON TARGET', v => Math.round(v * 100) + '%')
+      : scoreChart(r, 'TARGETS PER MINUTE (MISSES COST 150 MS)', v => Math.round(v));
+    return `<article class="card"><div class="card-head"><h3>${name}</h3><span class="val">${r.sens.toFixed(2)}</span></div>
+      <div class="sub">${sub}</div>${warn}<div class="chart">${chart}</div></article>`;
+  }
+
+  const AX = 'fill="var(--muted)" font-family="IBM Plex Mono, monospace" font-size="11"';
+  function reachChart(R) {
+    const w = 640, h = 190, L = 52, Rt = 18, T = 24, Bm = 40;
     const lo = 0.6, hi = 1.4, y = r => T + (hi - Math.min(hi, Math.max(lo, r))) / (hi - lo) * (h - T - Bm);
-    const n = Math.max(R.length, 4), x = i => L + (n === 1 ? 0 : i * (w - L - Rt) / (n - 1));
+    const n = Math.max(R.length, 4), x = i => L + i * (w - L - Rt) / (n - 1);
     let s = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Where your first flick landed each round">`;
-    s += `<text x="${L}" y="14" fill="var(--muted)" font-family="IBM Plex Mono, monospace" font-size="11">WHERE THE FIRST FLICK LANDED (100% = ON TARGET)</text>`;
+    s += `<text x="${L}" y="13" ${AX}>WHERE THE FIRST FLICK LANDED (100% = ON TARGET)</text>`;
     s += `<rect x="${L}" y="${y(1 + TOL)}" width="${w - L - Rt}" height="${y(1 - TOL) - y(1 + TOL)}" fill="var(--good)" opacity="0.12"/>`;
     for (const t of [0.7, 0.85, 1, 1.15, 1.3]) {
       s += `<line x1="${L}" x2="${w - Rt}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)" stroke-width="1"${t === 1 ? '' : ' stroke-dasharray="3 4"'}/>`;
-      s += `<text x="${L - 8}" y="${y(t) + 4}" text-anchor="end" fill="var(--muted)" font-family="IBM Plex Mono, monospace" font-size="11">${Math.round(t * 100)}%</text>`;
+      s += `<text x="${L - 8}" y="${y(t) + 4}" text-anchor="end" ${AX}>${Math.round(t * 100)}%</text>`;
     }
     s += `<text x="${w - Rt}" y="${y(1.3) - 6}" text-anchor="end" fill="var(--over)" font-family="IBM Plex Mono, monospace" font-size="11">overshoot ↑</text>`;
-    s += `<text x="${w - Rt}" y="${y(0.7) + 16}" text-anchor="end" fill="var(--under)" font-family="IBM Plex Mono, monospace" font-size="11">undershoot ↓</text>`;
+    s += `<text x="${w - Rt}" y="${y(0.7) + 15}" text-anchor="end" fill="var(--under)" font-family="IBM Plex Mono, monospace" font-size="11">undershoot ↓</text>`;
     if (R.length > 1) s += `<polyline fill="none" stroke="var(--muted)" stroke-width="1.5" points="${R.map((r, i) => `${x(i)},${y(r.reach)}`).join(' ')}"/>`;
     R.forEach((r, i) => {
       s += `<circle cx="${x(i)}" cy="${y(r.reach)}" r="${i === R.length - 1 ? 6 : 4.5}" fill="var(--${kind(r.reach) === 'on' ? 'good' : kind(r.reach)})"/>`;
       s += `<text x="${x(i)}" y="${h - Bm + 18}" text-anchor="middle" fill="var(--fg)" font-family="IBM Plex Mono, monospace" font-size="11">${r.sens.toFixed(2)}</text>`;
-      s += `<text x="${x(i)}" y="${h - Bm + 32}" text-anchor="middle" fill="var(--muted)" font-family="IBM Plex Mono, monospace" font-size="10">R${i + 1}</text>`;
+      s += `<text x="${x(i)}" y="${h - Bm + 32}" text-anchor="middle" ${AX} font-size="10">R${i + 1}</text>`;
     });
-    if (!R.length) s += `<text x="${(L + w - Rt) / 2}" y="${y(1) - 12}" text-anchor="middle" fill="var(--muted)" font-family="IBM Plex Sans, sans-serif" font-size="13">Your rounds will plot here</text>`;
+    return s + '</svg>';
+  }
+
+  function scoreChart(r, label, fmt) {
+    const pts = r.points || [];
+    if (!pts.length) return '';
+    const w = 640, h = 190, L = 52, Rt = 18, T = 24, Bm = 40;
+    const s0 = pts[0].sens * 0.93, s1 = pts[pts.length - 1].sens * 1.07, ls0 = Math.log(s0), ls1 = Math.log(s1);
+    const x = s => L + (Math.log(s) - ls0) / (ls1 - ls0) * (w - L - Rt);
+    const scores = pts.map(p => p.score);
+    let lo = Math.min(...scores), hi = Math.max(...scores);
+    const pad = (hi - lo) * 0.3 || Math.abs(hi) * 0.1 || 0.05; lo -= pad; hi += pad;
+    const y = v => T + (hi - Math.min(hi, Math.max(lo, v))) / (hi - lo) * (h - T - Bm);
+    let s = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${label} for each sens tested">`;
+    s += `<text x="${L}" y="13" ${AX}>${label}</text>`;
+    for (let i = 0; i <= 3; i++) {
+      const v = lo + (hi - lo) * (i / 3);
+      s += `<line x1="${L}" x2="${w - Rt}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 4"/>`;
+      s += `<text x="${L - 8}" y="${y(v) + 4}" text-anchor="end" ${AX}>${fmt(v)}</text>`;
+    }
+    if (r.curve) {
+      const { a, b, c, xm } = r.curve, cp = [];
+      for (let i = 0; i <= 40; i++) { const sv = Math.exp(ls0 + (ls1 - ls0) * i / 40), xx = Math.log(sv) - xm; cp.push(`${x(sv).toFixed(1)},${y(a + b * xx + c * xx * xx).toFixed(1)}`); }
+      s += `<polyline fill="none" stroke="var(--muted)" stroke-width="1.5" opacity="0.7" points="${cp.join(' ')}"/>`;
+    }
+    s += `<line x1="${x(r.sens)}" x2="${x(r.sens)}" y1="${T}" y2="${h - Bm}" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+    s += `<text x="${x(r.sens) + 6}" y="${T + 12}" fill="var(--accent)" font-family="IBM Plex Mono, monospace" font-size="11">best ${r.sens.toFixed(2)}</text>`;
+    pts.forEach(p => {
+      s += `<circle cx="${x(p.sens)}" cy="${y(p.score)}" r="5" fill="var(--fg)"/>`;
+      s += `<text x="${x(p.sens)}" y="${h - Bm + 18}" text-anchor="middle" fill="var(--fg)" font-family="IBM Plex Mono, monospace" font-size="11">${p.sens.toFixed(2)}</text>`;
+    });
+    s += `<text x="${(L + w - Rt) / 2}" y="${h - 4}" text-anchor="middle" ${AX} font-size="10">SENS TESTED</text>`;
     return s + '</svg>';
   }
 
   readInputs(); renderScale(); renderResults(); updateOverlay();
   requestAnimationFrame(loop);
-  window.__cal = { analyzeTrial, nextSens, finalSens };
+  window.__cal = { analyzeTrial, nextSens, finalSens, fitBest, overall };
 })();
 </script>
 </body>
