@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Warzone mouse sensitivity finder: flick, tracking and micro-adjust drills scored with Fitts throughput, kept inside an ergonomic range, with an AI-ready data export.">
+<meta name="description" content="Mouse sensitivity finder for Warzone and Valorant: flick, tracking and micro-adjust drills scored with Fitts throughput, kept inside an ergonomic range, with an AI-ready data export.">
 <style>*,*::before,*::after{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Warzone Sens Calibrator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -44,17 +44,21 @@ h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(28px, 
 h2 { font: 600 18px var(--font-display); letter-spacing: .03em; margin: 0; }
 .lede { color: var(--muted); max-width: 70ch; margin: 0; }
 
-.setup { display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: end; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
-.field { display: grid; gap: 4px; min-width: 0; }
-.field label, .field .label { font-size: 12px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; font-family: var(--font-data); }
-.field input[type="number"], .field select { font: 500 16px var(--font-data); color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 7px 9px; font-variant-numeric: tabular-nums; }
+/* Every field is the same three rows (label / 38px control / hint), so controls line up whether or not a hint exists. */
+.setup { display: grid; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+.setup-row, details.adv .adv-row { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: flex-start; }
+.field { display: grid; grid-template-rows: 16px 38px 16px; gap: 4px; min-width: 0; }
+.field label, .field .label { font-size: 12px; line-height: 16px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; font-family: var(--font-data); white-space: nowrap; }
+.field input[type="number"], .field select { box-sizing: border-box; height: 38px; font: 500 16px var(--font-data); color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 0 9px; font-variant-numeric: tabular-nums; }
 .field input[type="number"] { width: 96px; }
-.field select { font-family: var(--font-body); font-size: 14px; font-weight: 600; padding: 8px 9px; }
+.field input:disabled { color: var(--muted); }
+.field select { font-family: var(--font-body); font-size: 14px; font-weight: 600; }
+.setup-foot { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 14px; }
 .field input:focus-visible, .field select:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.field .hint { font: 12px var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
-.seg { display: flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: var(--panel-2); }
+.field .hint { font: 12px/16px var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.seg { box-sizing: border-box; height: 38px; display: flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: var(--panel-2); }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
-.seg label { font: 600 13px var(--font-body); letter-spacing: 0; text-transform: none; color: var(--muted); padding: 8px 12px; cursor: pointer; border-right: 1px solid var(--line); }
+.seg label { display: flex; align-items: center; font: 600 13px var(--font-body); letter-spacing: 0; text-transform: none; color: var(--muted); padding: 0 12px; cursor: pointer; border-right: 1px solid var(--line); white-space: nowrap; }
 .seg label:last-of-type { border-right: 0; }
 .seg input:checked + label { background: var(--accent); color: var(--accent-ink); }
 .seg input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -62,10 +66,9 @@ h2 { font: 600 18px var(--font-display); letter-spacing: .03em; margin: 0; }
 button { font: 600 14px var(--font-body); border-radius: 4px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--line); background: var(--panel-2); color: var(--fg); }
 button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 button:hover { filter: brightness(1.08); }
-details.adv { width: 100%; }
 details.adv summary { cursor: pointer; font: 12px var(--font-data); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-details.adv .adv-row { display: flex; flex-wrap: wrap; gap: 14px 18px; padding-top: 12px; }
-.status { display: flex; flex-wrap: wrap; gap: 8px 16px; width: 100%; font: 12px var(--font-data); color: var(--muted); }
+details.adv .adv-row { padding-top: 12px; }
+.status { display: flex; flex-wrap: wrap; gap: 8px 16px; font: 12px var(--font-data); color: var(--muted); min-width: 0; }
 .chip { display: inline-flex; align-items: center; gap: 6px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
 .dot.ok { background: var(--good); } .dot.warn { background: var(--over); }
@@ -139,12 +142,20 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 <body>
 <main class="wrap">
   <header>
-    <div class="eyebrow">Call of Duty sensitivity scale · 0.0066° per count</div>
+    <div class="eyebrow" id="eyebrow">Call of Duty sensitivity scale · 0.0066° per count</div>
     <h1>Warzone Sens Calibrator</h1>
     <p class="lede">Three drills, one number. Each drill tests a spread of sens values in shuffled order and scores how well you aim with each. A curve through those scores finds your peak, kept inside a range your arm and mousepad can actually handle. You can switch the scoring method below; each one explains what it measures and why.</p>
   </header>
 
   <section class="setup" aria-label="Setup">
+   <div class="setup-row">
+    <div class="field"><span class="label" id="game-label">Game</span>
+      <div class="seg" role="radiogroup" aria-labelledby="game-label">
+        <input type="radio" name="game" id="g-warzone" value="warzone" checked><label for="g-warzone">Warzone</label>
+        <input type="radio" name="game" id="g-valorant" value="valorant"><label for="g-valorant">Valorant</label>
+      </div>
+      <span class="hint" id="game-hint"></span>
+    </div>
     <div class="field"><span class="label" id="mode-label">Test</span>
       <div class="seg" role="radiogroup" aria-labelledby="mode-label">
         <input type="radio" name="mode" id="m-full" value="full" checked><label for="m-full">Full test</label>
@@ -161,12 +172,10 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
       </select>
     </div>
     <div class="field"><label for="dpi">Mouse DPI</label><input id="dpi" type="number" min="100" max="32000" step="50" value="5200"></div>
-    <div class="field"><label for="sens0">Center sens</label><input id="sens0" type="number" min="0.05" max="30" step="0.05" value="1.5"><span class="hint" id="sens0-hint"></span></div>
-    <div class="field"><label for="fov">FOV</label><input id="fov" type="number" min="60" max="120" step="1" value="120"></div>
-    <div class="actions">
-      <button id="check" type="button">Check mouse scaling</button>
-      <button id="start" class="primary" type="button">Start</button>
-    </div>
+    <div class="field"><label for="sens0">Center sens</label><input id="sens0" type="number" min="0.001" max="100" step="0.01" value="1.5"><span class="hint" id="sens0-hint"></span></div>
+    <div class="field"><label for="cm">cm / 360</label><input id="cm" type="number" min="2" max="200" step="0.5" value="17.8"><span class="hint">sets sens too</span></div>
+    <div class="field"><label for="fov">FOV</label><input id="fov" type="number" min="60" max="120" step="1" value="120"><span class="hint" id="fov-hint"></span></div>
+   </div>
     <details class="adv">
       <summary>More settings</summary>
       <div class="adv-row">
@@ -183,11 +192,17 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
         </div>
       </div>
     </details>
-    <div class="status">
-      <span class="chip"><span class="dot" id="raw-dot"></span><span id="raw-text">Raw input: not tested yet</span></span>
-      <span class="chip"><span class="dot" id="scale-dot"></span><span id="scale-text">Mouse scaling: not checked</span></span>
-      <span class="chip" id="time-est"></span>
-      <span class="touch-note">This needs a mouse and a desktop browser.</span>
+    <div class="setup-foot">
+      <div class="status">
+        <span class="chip"><span class="dot" id="raw-dot"></span><span id="raw-text">Raw input: not tested yet</span></span>
+        <span class="chip"><span class="dot" id="scale-dot"></span><span id="scale-text">Mouse scaling: not checked</span></span>
+        <span class="chip" id="time-est"></span>
+        <span class="touch-note">This needs a mouse and a desktop browser.</span>
+      </div>
+      <div class="actions">
+        <button id="check" type="button">Check mouse scaling</button>
+        <button id="start" class="primary" type="button">Start</button>
+      </div>
     </div>
   </section>
 
@@ -231,19 +246,35 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     <div><h3>Flicks</h3><p>Targets 20–90° away. Your first click ends each target, hit or miss, so speed and accuracy are both measured. The replay marks where your first fast movement stopped (X) and where the target was (dashed ring).</p></div>
     <div><h3>Tracking</h3><p>Keep the crosshair on a target that strafes like a player 10–20 m away (8–28°/s by default, direction changes every 0.6–1.5 s). The first 220 ms after each direction change isn't scored, since nobody can react faster than that. Always scored by time on target.</p></div>
     <div><h3>Micro-adjust</h3><p>Small targets 3–12° away, like correcting onto a head. Scored with the selected method (Fitts throughput when Reach matching is selected).</p></div>
-    <div><h3>Overall sens</h3><p>Tracking 45%, flicks 35%, micro-adjust 20%, blended on a log scale and kept inside your ergonomic range. Only drills you've run count.</p></div>
+    <div><h3>Overall sens</h3><p id="blend-text">Tracking 45%, flicks 35%, micro-adjust 20%, blended on a log scale and kept inside your ergonomic range. Only drills you've run count.</p></div>
   </section>
 </main>
 
 <script>
 (() => {
-  const VERSION = 3;
-  const YAW = 0.0066;                       // CoD degrees per count at sens 1
+  const VERSION = 4;
+  // Game profiles: view rotation per mouse count at sens 1, how finely the game's sens field rounds,
+  // whether FOV is fixed, and how much each drill counts toward the overall sens.
+  // Valorant is a tactical shooter where fights are decided by flicks and small corrections,
+  // so tracking counts less there than in Warzone.
+  const GAMES = {
+    warzone: { id: 'warzone', name: 'Warzone', scale: 'Call of Duty', yaw: 0.0066, decimals: 2, fixedFov: null,
+      weights: { flick: 0.35, track: 0.45, micro: 0.2 },
+      apply: s => `Set <b>Mouse Sensitivity</b> to <b>${s}</b> in Warzone and keep <b>ADS multiplier at 1.00</b>.` },
+    valorant: { id: 'valorant', name: 'Valorant', scale: 'Valorant', yaw: 0.07, decimals: 3, fixedFov: 103,
+      weights: { flick: 0.45, track: 0.2, micro: 0.35 },
+      apply: s => `Set <b>Sensitivity</b> to <b>${s}</b> in Valorant (Settings → General → Mouse) and keep <b>Scoped Sensitivity Multiplier at 1.000</b>.` }
+  };
+  const G = () => GAMES[cfg.game] || GAMES.warzone;
+  const yaw = () => G().yaw;
+  const SD = () => G().decimals;                           // decimals the game's sens field accepts
+  const rs = v => { const p = 10 ** SD(); return Math.round(v * p) / p; };
+  const EPS = () => 0.5 / 10 ** SD();
+  const fovNow = () => G().fixedFov || cfg.fov;
   const HIT_DEG = 2.2, MICRO_R = 1.1, TRACK_R = 2.5;
   const TIMEOUT_MS = 6000, MICRO_TIMEOUT = 4000, MAX_ROUNDS = 8, TOL = 0.06;
   const TRACK_MS = 10000, SETTLE_MS = 1500, WARMUP = 2;
   const BRACKET = [0.62, 0.79, 1, 1.27, 1.6], REPS = 2;
-  const WEIGHTS = { flick: 0.35, track: 0.45, micro: 0.2 };
   const JITTER_MM = 0.1;                    // rough size of involuntary hand jitter while aiming
   // Tracking target motion. A strafing player 10–20 m away moves roughly 10–30°/s across your view.
   // Direction changes are spaced well beyond visual reaction time (~200–250 ms), and the first
@@ -336,7 +367,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
       next(sens, reach, b) {
         const g = Math.min(1.7, Math.max(0.6, reach)) / this.targetReach;
         const step = Math.min(1.15, Math.max(1 / 1.15, Math.pow(g, -0.85)));
-        return r2(clampSens(sens * step, b));
+        return rs(clampSens(sens * step, b));
       },
       final(rounds, b) {
         const R = rounds.map(r => ({ sens: r.sens, reach: r.reach / this.targetReach }));
@@ -344,7 +375,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
         let s;
         if (n >= 2 && ok(R[n - 1]) && ok(R[n - 2])) s = Math.sqrt(R[n - 1].sens / Math.pow(R[n - 1].reach, 0.85) * R[n - 2].sens / Math.pow(R[n - 2].reach, 0.85));
         else s = R[n - 1].sens / Math.pow(Math.min(1.7, Math.max(0.6, R[n - 1].reach)), 0.85);
-        return r2(clampSens(s, b));
+        return rs(clampSens(s, b));
       },
       fmt: v => `${Math.round(v * 100)}%`
     }
@@ -353,34 +384,40 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   const methodFor = id => METHODS[id] || TRACK_METHOD;
 
   // ---- settings ----
-  const cfg = { dpi: 5200, startSens: 1.5, fov: 120, perBlock: 10, gap: 350, mode: 'full', method: 'throughput', padCm: 45, fastCm: 12, trackSpeed: 'real' };
+  const cfg = { game: 'warzone', dpi: 5200, startSens: 1.5, fov: 120, perBlock: 10, gap: 350, mode: 'full', method: 'throughput', padCm: 45, fastCm: 12, trackSpeed: 'real' };
   let scale = 1;                            // browser movement units per real mouse count
-  let saved = {};                           // { flick, track, micro } latest result + raw data per drill
+  let savedAll = {};                        // { warzone: {...}, valorant: {...} }
+  let saved = {};                           // current game's { flick, track, micro } latest result + raw data per drill
   try {
     const s3 = JSON.parse(localStorage.getItem('wzcal3') || 'null');
     const old = JSON.parse(localStorage.getItem('wzcal') || 'null');
     const src = s3 || old;
-    if (src) { const c = src.cfg || {}; ['dpi', 'fov', 'gap', 'padCm', 'fastCm', 'mode', 'method', 'trackSpeed'].forEach(k => { if (c[k] !== undefined) cfg[k] = c[k]; }); scale = src.scale || 1; }
-    if (s3) saved = s3.result || {};        // results from older versions used different math and are dropped
+    if (src) { const c = src.cfg || {}; ['game', 'dpi', 'fov', 'gap', 'padCm', 'fastCm', 'mode', 'method', 'trackSpeed'].forEach(k => { if (c[k] !== undefined) cfg[k] = c[k]; }); scale = src.scale || 1; }
+    // v3 stored one game's results; v4 stores them per game. Older versions used different math and are dropped.
+    if (s3) savedAll = (s3.v || 3) >= 4 ? (s3.result || {}) : { warzone: s3.result || {} };
     if (s3 && s3.cfg && s3.cfg.startSens) cfg.startSens = s3.cfg.startSens;
     if (s3 && s3.cfg && s3.cfg.perBlock) cfg.perBlock = s3.cfg.perBlock;
   } catch (e) {}
+  if (!GAMES[cfg.game]) cfg.game = 'warzone';
+  saved = savedAll[cfg.game] = savedAll[cfg.game] || {};
   if (!METHODS[cfg.method]) cfg.method = 'throughput';
   $('dpi').value = cfg.dpi; $('sens0').value = cfg.startSens; $('fov').value = cfg.fov; $('per').value = cfg.perBlock;
   $('gap').value = cfg.gap; $('pad').value = cfg.padCm; $('fast').value = cfg.fastCm; $('method').value = cfg.method;
   if (!TRACK_PRESETS[cfg.trackSpeed]) cfg.trackSpeed = 'real';
   $('tspeed').value = cfg.trackSpeed;
-  const modeInput = document.querySelector(`input[name="mode"][value="${cfg.mode}"]`);
-  if (modeInput) modeInput.checked = true;
+  for (const [name, val] of [['mode', cfg.mode], ['game', cfg.game]]) {
+    const el = document.querySelector(`input[name="${name}"][value="${val}"]`);
+    if (el) el.checked = true;
+  }
 
   function persist() {
-    try { localStorage.setItem('wzcal3', JSON.stringify({ v: VERSION, cfg, scale, result: saved })); } catch (e) {}
+    try { localStorage.setItem('wzcal3', JSON.stringify({ v: VERSION, cfg, scale, result: savedAll })); } catch (e) {}
   }
   const num = (id, lo, hi, d) => { const v = parseFloat($(id).value); return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
   function readInputs() {
     cfg.dpi = num('dpi', 100, 32000, 5200);
-    cfg.startSens = num('sens0', 0.05, 30, 1.5);
-    cfg.fov = num('fov', 60, 120, 120);
+    cfg.startSens = num('sens0', 0.001, 100, 1.5);
+    if (!G().fixedFov) cfg.fov = num('fov', 60, 120, 120);
     cfg.perBlock = Math.round(num('per', 6, 30, 10));
     cfg.gap = Math.round(num('gap', 150, 1500, 350));
     cfg.padCm = num('pad', 20, 120, 45);
@@ -388,16 +425,33 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     cfg.mode = (document.querySelector('input[name="mode"]:checked') || {}).value || 'full';
     cfg.method = METHODS[$('method').value] ? $('method').value : 'throughput';
     cfg.trackSpeed = TRACK_PRESETS[$('tspeed').value] ? $('tspeed').value : 'real';
-    $('sens0-hint').textContent = cm360(cfg.startSens).toFixed(1) + ' cm/360';
+    renderGame();
     const mins = { full: 8, flick: 3, track: 2.5, micro: 2.5 }[cfg.mode];
     $('time-est').textContent = `About ${mins} min`;
     persist();
     renderMethod();
   }
+  // Everything on the page that depends on which game is selected.
+  function renderGame() {
+    const g = G(), w = g.weights;
+    $('eyebrow').textContent = `${g.scale} sensitivity scale · ${g.yaw}° per count`;
+    $('sens0').step = g.decimals === 3 ? '0.005' : '0.05';
+    $('sens0-hint').textContent = `eDPI ${Math.round(cfg.startSens * cfg.dpi)}`;
+    $('fov').disabled = !!g.fixedFov;
+    $('fov').value = g.fixedFov || cfg.fov;
+    $('fov-hint').textContent = g.fixedFov ? 'fixed in Valorant' : '';
+    $('game-hint').textContent = `${g.yaw}° / count`;
+    $('blend-text').textContent = `In ${g.name}: tracking ${Math.round(w.track * 100)}%, flicks ${Math.round(w.flick * 100)}%, micro-adjust ${Math.round(w.micro * 100)}%, blended on a log scale and kept inside your ergonomic range. Only drills you've run count.`;
+  }
+
+  // Center sens and cm/360 are two views of one setting. Editing either updates the other;
+  // DPI changes keep the in-game sens, and switching games keeps the physical cm/360.
+  const showCm = () => { $('cm').value = cm360(cfg.startSens).toFixed(1); };
+  const showSens = () => { $('sens0').value = rs(cfg.startSens); };
 
   // ---- ergonomic range ----
-  const cm360 = s => 360 / (YAW * s * cfg.dpi) * 2.54;
-  const sensAtCm = cm => 360 * 2.54 / (YAW * cfg.dpi * cm);
+  const cm360 = s => 360 / (yaw() * s * cfg.dpi) * 2.54;
+  const sensAtCm = cm => 360 * 2.54 / (yaw() * cfg.dpi * cm);
   const jitterDeg = cm => JITTER_MM / (cm * 10) * 360;
   function bounds() {
     const slowCm = Math.max(cfg.fastCm + 4, cfg.padCm * 1.6);   // a 180° turn fits in 80% of the pad width
@@ -410,10 +464,29 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     const mx = Math.max(...v), mn = Math.min(...v);
     if (mx > b.hi) v = v.map(x => x * b.hi / mx);
     else if (mn < b.lo) v = v.map(x => x * b.lo / mn);
-    return [...new Set(v.map(x => r2(clampSens(x, b))))];
+    return [...new Set(v.map(x => rs(clampSens(x, b))))];
   }
 
-  ['dpi', 'sens0', 'fov', 'per', 'gap', 'pad', 'fast'].forEach(id => $(id).addEventListener('input', () => { readInputs(); renderScale(); }));
+  ['fov', 'per', 'gap', 'pad', 'fast'].forEach(id => $(id).addEventListener('input', () => { readInputs(); renderScale(); }));
+  $('sens0').addEventListener('input', () => { readInputs(); showCm(); });
+  $('dpi').addEventListener('input', () => { readInputs(); showCm(); });
+  $('cm').addEventListener('input', () => {
+    const cm = parseFloat($('cm').value);
+    if (!(cm >= 2 && cm <= 200)) return;
+    cfg.dpi = num('dpi', 100, 32000, 5200);
+    cfg.startSens = rs(sensAtCm(cm)); showSens(); readInputs();
+  });
+  document.querySelectorAll('input[name="game"]').forEach(el => el.addEventListener('change', () => {
+    const cm = cm360(cfg.startSens);
+    if (S && state !== 'idle' && state !== 'done') {
+      if (document.pointerLockElement) document.exitPointerLock();
+      S = null; trial = null; trk = null; state = 'idle';
+    }
+    cfg.game = el.value;
+    saved = savedAll[cfg.game] = savedAll[cfg.game] || {};
+    cfg.startSens = rs(sensAtCm(cm)); showSens();
+    readInputs(); showCm(); renderResults(); updateOverlay();
+  }));
   document.querySelectorAll('input[name="mode"]').forEach(el => el.addEventListener('change', readInputs));
   $('method').addEventListener('change', readInputs);
   $('tspeed').addEventListener('change', readInputs);
@@ -429,7 +502,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   let locked = false, measureSum = 0, rawInput = null;
 
   function makeDrill(type) {
-    const center = r2(clampSens(cfg.startSens));
+    const center = rs(clampSens(cfg.startSens));
     if (type === 'flick' && METHODS[cfg.method].search === 'adaptive')
       return { type, method: cfg.method, adaptive: true, center, sens: center, rounds: [], cur: { trials: [] }, boundHits: 0 };
     const method = type === 'track' ? 'track' : METHODS[cfg.method].search === 'bracket' ? cfg.method : 'throughput';
@@ -533,16 +606,16 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     }
     if (best === null) best = top.sens;
     const edge = pts.length > 1 && (top.sens === pts[0].sens || top.sens === pts[pts.length - 1].sens);
-    return { sens: r2(best), edge, points: pts, curve };
+    return { sens: rs(best), edge, points: pts, curve };
   }
 
   function overall(sv) {
-    const parts = ['flick', 'track', 'micro'].filter(k => sv[k] && isFinite(sv[k].sens)).map(k => ({ k, s: sv[k].sens * (sv[k].dpi || cfg.dpi) / cfg.dpi, w: WEIGHTS[k] }));
+    const parts = ['flick', 'track', 'micro'].filter(k => sv[k] && isFinite(sv[k].sens)).map(k => ({ k, s: sv[k].sens * (sv[k].dpi || cfg.dpi) / cfg.dpi, w: G().weights[k] }));
     if (!parts.length) return null;
     const wsum = parts.reduce((a, p) => a + p.w, 0);
     const raw = Math.exp(parts.reduce((a, p) => a + p.w * Math.log(p.s), 0) / wsum);
-    const sens = r2(clampSens(raw));
-    return { sens, clamped: Math.abs(sens - r2(raw)) > 0.005, parts: parts.map(p => ({ ...p, share: p.w / wsum })) };
+    const sens = rs(clampSens(raw));
+    return { sens, clamped: Math.abs(sens - rs(raw)) > EPS(), parts: parts.map(p => ({ ...p, share: p.w / wsum })) };
   }
 
   // ---- targets (flicks + micro) ----
@@ -610,7 +683,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     const r = { order: S.order++, sens: d.sens, reach: median(pool.map(t => t.reach)), mt: Math.round(mean(tr.filter(t => t.hit).map(t => t.mt))), misses: tr.reduce((x, t) => x + t.misses, 0), trials: tr };
     d.rounds.push(r);
     const next = M.next(d.sens, r.reach, b);
-    const atBound = next >= r2(b.hi) - 0.005 || next <= r2(b.lo) + 0.005;
+    const atBound = next >= rs(b.hi) - EPS() || next <= rs(b.lo) + EPS();
     d.boundHits = atBound ? d.boundHits + 1 : 0;
     const R = d.rounds, ok = x => Math.abs(x.reach / M.targetReach - 1) <= TOL;
     if ((R.length >= 2 && ok(R[R.length - 1]) && ok(R[R.length - 2])) || R.length >= MAX_ROUNDS || d.boundHits >= 2) {
@@ -665,7 +738,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     else {
       const fit = fitBest(d.records), b = bounds();
       const lag = d.type === 'track' ? mean(d.records.map(r => r.lagDeg).filter(x => x !== null)) : undefined;
-      d.result = { ...fit, sens: r2(clampSens(fit.sens, b)), fitSens: fit.sens, center: d.center, lag };
+      d.result = { ...fit, sens: rs(clampSens(fit.sens, b)), fitSens: fit.sens, center: d.center, lag };
       finishDrill();
     }
   }
@@ -673,7 +746,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   function finishDrill() {
     const d = S.drill;
     saved[d.type] = {
-      ...d.result, method: d.method, dpi: cfg.dpi, fov: cfg.fov, date: new Date().toISOString().slice(0, 10),
+      ...d.result, method: d.method, dpi: cfg.dpi, fov: fovNow(), game: cfg.game, date: new Date().toISOString().slice(0, 10),
       blocks: d.adaptive ? undefined : d.records, rounds: d.adaptive ? d.rounds : undefined
     };
     persist();
@@ -724,7 +797,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     if (!dx && !dy) return;
     if (state === 'measure') { measureSum += dx; return; }
     if (state === 'measureArm' || !S) return;
-    const k = YAW * S.drill.sens / scale;
+    const k = yaw() * S.drill.sens / scale;
     cam.yaw += dx * k;
     cam.pitch = Math.min(80, Math.max(-80, cam.pitch - dy * k));
     if (state === 'trial' && trial) trial.samples.push({ t: e.timeStamp, yaw: cam.yaw, pitch: cam.pitch });
@@ -778,7 +851,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     if (state === 'idle') setOverlay('Ready when you are', 'Pick a test and a scoring method, then click here. Press Esc any time to pause.');
     else if (state === 'ready' || state === 'intro') setOverlay(`${name}${stepTxt}`, `${DRILLS[d.type].intro} Click to lock the mouse and begin.`);
     else if (state === 'paused' || state === 'between') setOverlay(`Paused · ${name}`, d.adaptive ? 'Click to lock the mouse and carry on.' : 'Click to carry on. The interrupted block starts over.');
-    else if (state === 'done') { const o = overall(saved); setOverlay(o ? `Your sens: ${o.sens.toFixed(2)}` : 'Done', o ? `${cm360(o.sens).toFixed(1)} cm/360 at ${cfg.dpi} DPI. Details and export are below. Click to run it again.` : 'Click to run it again.'); }
+    else if (state === 'done') { const o = overall(saved); setOverlay(o ? `Your sens: ${o.sens.toFixed(SD())}` : 'Done', o ? `${cm360(o.sens).toFixed(1)} cm/360 at ${cfg.dpi} DPI. Details and export are below. Click to run it again.` : 'Click to run it again.'); }
     else if (state === 'measureReady') setOverlay('Mouse scaling check', 'Click to lock the mouse. You’ll need a ruler.');
   }
   function renderRaw() {
@@ -808,15 +881,15 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 
     const b = bounds(), you = cm360(cfg.startSens);
     const lc = Math.log(4), hc = Math.log(120), pos = cm => Math.min(100, Math.max(0, (Math.log(cm) - lc) / (hc - lc) * 100));
-    const outside = cfg.startSens > b.hi + 0.005 || cfg.startSens < b.lo - 0.005;
+    const outside = cfg.startSens > b.hi + EPS() || cfg.startSens < b.lo - EPS();
     $('range-card').innerHTML = `
       <h3>Ergonomic range</h3>
-      <p>Allowed at ${cfg.dpi} DPI: <b>sens ${b.lo.toFixed(2)} to ${b.hi.toFixed(2)}</b> (${b.slowCm.toFixed(0)} to ${b.fastCm.toFixed(0)} cm/360). Every test and result stays inside it.</p>
+      <p>Allowed at ${cfg.dpi} DPI: <b>sens ${b.lo.toFixed(SD())} to ${b.hi.toFixed(SD())}</b> (${b.slowCm.toFixed(0)} to ${b.fastCm.toFixed(0)} cm/360). Every test and result stays inside it.</p>
       <div class="range-bar" aria-hidden="true"><div class="ok" style="left:${pos(b.fastCm)}%;width:${pos(b.slowCm) - pos(b.fastCm)}%"></div><div class="you" style="left:calc(${pos(you)}% - 1px)"></div></div>
       <div class="range-scale"><span>4 cm (fast)</span><span>120 cm (slow)</span></div>
       <p><b>Slow limit:</b> a 180° turn should fit in 80% of your ${cfg.padCm} cm mousepad, so you never have to lift the mouse mid-fight.</p>
       <p><b>Fast limit:</b> about ${JITTER_MM} mm of natural hand jitter moves your aim ${jitterDeg(b.fastCm).toFixed(2)}° at ${b.fastCm} cm/360. A head at mid range is roughly 1–2°. This limit is a rule of thumb you can change under More settings.</p>
-      <p${outside ? ' class="warn"' : ''}>Center sens ${cfg.startSens.toFixed(2)} = ${you.toFixed(1)} cm/360, jitter ${jitterDeg(you).toFixed(2)}°.${outside ? ` That's outside the range, so tests will center on ${clampSens(cfg.startSens).toFixed(2)}.` : ''}</p>`;
+      <p${outside ? ' class="warn"' : ''}>Center sens ${cfg.startSens.toFixed(SD())} = ${you.toFixed(1)} cm/360, jitter ${jitterDeg(you).toFixed(2)}°.${outside ? ` That's outside the range, so tests will center on ${clampSens(cfg.startSens).toFixed(SD())}.` : ''}</p>`;
   }
 
   // ---- 3D view ----
@@ -847,7 +920,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 
   function draw(now) {
     if (!W) return;
-    const B = basis(), tanH = Math.tan(rad(cfg.fov / 2)), half = W / 2;
+    const B = basis(), tanH = Math.tan(rad(fovNow() / 2)), half = W / 2;
     const P = d => { const z = dot3(d, B.f); if (z <= 0.03) return null; return [half + dot3(d, B.r) / z / tanH * half, H / 2 - dot3(d, B.u) / z / tanH * half, z]; };
     const rpxAt = (deg, z) => Math.tan(rad(deg)) / tanH * half / z;
 
@@ -913,7 +986,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     if (S && S.drill && state !== 'done') {
       const d = S.drill;
       ctx.fillStyle = C.fg; ctx.textAlign = 'left';
-      ctx.fillText(`${DRILLS[d.type].name.toUpperCase()}  ·  SENS ${d.sens.toFixed(2)}  ·  ${cm360(d.sens).toFixed(1)} CM/360`, 14, 12);
+      ctx.fillText(`${DRILLS[d.type].name.toUpperCase()}  ·  SENS ${d.sens.toFixed(SD())}  ·  ${cm360(d.sens).toFixed(1)} CM/360`, 14, 12);
       ctx.textAlign = 'right';
       let right;
       const cur = d.cur ? d.cur.trials.length + (state === 'trial' ? 1 : 0) : 0;
@@ -947,15 +1020,15 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
       const stepTxt = S.queue.length > 1 ? `  ·  ${S.step + 1} of ${S.queue.length}` : '';
       if (state === 'intro') {
         const pk = S.step > 0 ? S.queue[S.step - 1] : null;
-        const prev = pk && saved[pk] ? `${DRILLS[pk].name} done: ${saved[pk].sens.toFixed(2)}.  ` : '';
+        const prev = pk && saved[pk] ? `${DRILLS[pk].name} done: ${saved[pk].sens.toFixed(SD())}.  ` : '';
         panel([name + stepTxt, DRILLS[d.type].intro, prev + 'Click to start.'], fs);
       } else if (state === 'between') {
         const tr = METHODS.reach.targetReach;
         panel(between.repeat
           ? ['Not enough clean flicks', 'Snap to each target in one quick motion.', 'Click to repeat this round.']
-          : [`Round done: first flicks stopped at ${Math.round(between.r.reach * 100)}% (aim ${Math.round(tr * 100)}%)`, `Next: sens ${between.next.toFixed(2)}  (${cm360(between.next).toFixed(1)} cm/360)`, 'Click to start the next round.'], fs);
+          : [`Round done: first flicks stopped at ${Math.round(between.r.reach * 100)}% (aim ${Math.round(tr * 100)}%)`, `Next: sens ${between.next.toFixed(SD())}  (${cm360(between.next).toFixed(1)} cm/360)`, 'Click to start the next round.'], fs);
       } else if (state === 'countdown') {
-        panel([`${name}  ·  block ${d.bi + 1} of ${d.blocks.length}`, `Sens ${d.sens.toFixed(2)}  (${cm360(d.sens).toFixed(1)} cm/360)`, d.type === 'track' ? 'Get on the target and stay there.' : 'First 2 targets are warm-up.'], fs);
+        panel([`${name}  ·  block ${d.bi + 1} of ${d.blocks.length}`, `Sens ${d.sens.toFixed(SD())}  (${cm360(d.sens).toFixed(1)} cm/360)`, d.type === 'track' ? 'Get on the target and stay there.' : 'First 2 targets are warm-up.'], fs);
       }
     }
     if (locked && (state === 'measureArm' || state === 'measure')) {
@@ -992,32 +1065,42 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   // ---- results ----
   const ex = (sens, score) => ({ sens, score });
   const exBlocks = (vals, scores) => vals.flatMap((s, i) => [ex(s, scores[i]), ex(s, scores[i] * 0.97)]);
-  const SENS5 = [0.93, 1.19, 1.5, 1.91, 2.4];
-  const EXAMPLE = {
-    flick: { dpi: 5200, method: 'throughput', ...fitBest(exBlocks(SENS5, [3.1, 3.6, 3.8, 3.5, 3.0])) },
-    track: { dpi: 5200, method: 'track', lag: 0.6, ...fitBest(exBlocks(SENS5, [0.49, 0.57, 0.61, 0.58, 0.47])) },
-    micro: { dpi: 5200, method: 'throughput', ...fitBest(exBlocks(SENS5, [2.6, 2.9, 2.95, 2.7, 2.3])) }
+  // Example results at about 12–31 cm/360, expressed in the selected game's sens scale.
+  const exampleData = () => {
+    const SENS5 = [0.93, 1.19, 1.5, 1.91, 2.4].map(v => rs(v * 0.0066 / yaw())), dpi = 5200;
+    return {
+      flick: { dpi, method: 'throughput', ...fitBest(exBlocks(SENS5, [3.1, 3.6, 3.8, 3.5, 3.0])) },
+      track: { dpi, method: 'track', lag: 0.6, ...fitBest(exBlocks(SENS5, [0.49, 0.57, 0.61, 0.58, 0.47])) },
+      micro: { dpi, method: 'throughput', ...fitBest(exBlocks(SENS5, [2.6, 2.9, 2.95, 2.7, 2.3])) }
+    };
   };
+
+  // The same physical speed in the other game, for players who play both.
+  function otherGame(sens) {
+    const other = Object.values(GAMES).find(g => g.id !== cfg.game);
+    const v = sens * yaw() / other.yaw, p = 10 ** other.decimals;
+    return `<p>Same speed in ${other.name}: <b>${(Math.round(v * p) / p).toFixed(other.decimals)}</b> at the same DPI.</p>`;
+  }
 
   function renderResults() {
     const hasSaved = saved.flick || saved.track || saved.micro;
     const isExample = !hasSaved && !S;
-    const sv = isExample ? EXAMPLE : saved;
+    const sv = isExample ? exampleData() : saved;
     const o = overall(sv);
     const running = S && state !== 'done' && state !== 'idle';
     let html = '';
     if (running) {
       const d = S.drill;
       html += `<span class="tag live">In progress</span>
-        <div class="big">${d.sens.toFixed(2)}</div>
+        <div class="big">${d.sens.toFixed(SD())}</div>
         <div class="big-sub">testing now · ${cm360(d.sens).toFixed(1)} cm/360</div>
         <p><b>${DRILLS[d.type].name}</b>${S.queue.length > 1 ? `, drill ${S.step + 1} of ${S.queue.length}` : ''}. ${d.adaptive ? `Round ${d.rounds.length + 1}.` : `Block ${Math.min(d.bi + 1, d.blocks.length)} of ${d.blocks.length}.`}</p>`;
-      if (o) html += `<p>Overall so far: <b>${o.sens.toFixed(2)}</b></p>`;
+      if (o) html += `<p>Overall so far: <b>${o.sens.toFixed(SD())}</b></p>`;
     } else if (o) {
       html += `${isExample ? '<span class="tag">Example</span>' : '<span class="tag live">Your overall sens</span>'}
-        <div class="big">${o.sens.toFixed(2)}</div>
+        <div class="big">${o.sens.toFixed(SD())}</div>
         <div class="big-sub">${cm360(o.sens).toFixed(1)} cm/360 at ${cfg.dpi} DPI</div>
-        <p>Set <b>Mouse Sensitivity</b> to <b>${o.sens.toFixed(2)}</b> in Warzone and keep <b>ADS multiplier at 1.00</b>.</p>
+        <p>${G().apply(o.sens.toFixed(SD()))}</p>${otherGame(o.sens)}
         ${o.clamped ? '<p class="warn">The blend landed outside your ergonomic range and was pulled to its edge.</p>' : ''}
         <p>${isExample ? 'Sample results so you can see the output. Pick a test and press Start to get your own.' : o.parts.length < 3 ? 'Run the full test to include every drill.' : 'Run the full test again on another day to confirm.'}</p>`;
     } else {
@@ -1025,7 +1108,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     }
     const parts = o ? Object.fromEntries(o.parts.map(p => [p.k, p])) : {};
     html += `<ul class="parts">${['flick', 'track', 'micro'].map(k => parts[k]
-      ? `<li><span>${DRILLS[k].name}</span><span>${parts[k].s.toFixed(2)}</span><span class="w">${Math.round(parts[k].share * 100)}%</span></li>`
+      ? `<li><span>${DRILLS[k].name}</span><span>${parts[k].s.toFixed(SD())}</span><span class="w">${Math.round(parts[k].share * 100)}%</span></li>`
       : `<li class="off"><span>${DRILLS[k].name}</span><span>not run</span><span class="w">0%</span></li>`).join('')}</ul>`;
     $('verdict').innerHTML = html;
     $('cards').innerHTML = ['flick', 'track', 'micro'].map(k => card(k, sv[k], isExample)).join('');
@@ -1036,14 +1119,14 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     if (!r || !isFinite(r.sens)) return `<article class="card"><div class="card-head"><h3>${name}</h3><span class="val none">Not run yet</span></div>
       <div class="sub">${k === 'track' ? 'Five sens values, scored by time on a strafing target.' : 'Five sens values, scored with the selected method.'}</div></article>`;
     const dpi = r.dpi || cfg.dpi, M = methodFor(r.method);
-    let sub = `${(360 / (YAW * r.sens * dpi) * 2.54).toFixed(1)} cm/360 at ${dpi} DPI · ${M.name || 'Time on target'}${r.date && !isEx ? ` · ${r.date}` : ''}`;
+    let sub = `${(360 / (yaw() * r.sens * dpi) * 2.54).toFixed(1)} cm/360 at ${dpi} DPI · ${M.name || 'Time on target'}${r.date && !isEx ? ` · ${r.date}` : ''}`;
     if (k === 'track' && isFinite(r.lag) && Math.abs(r.lag) >= 0.3) sub += ` · on average you ${r.lag > 0 ? 'trailed' : 'ran ahead of'} the target by ${Math.abs(r.lag).toFixed(1)}°`;
     let warn = '';
-    if (r.edge) warn += `<div class="sub warn">Your best score was at the edge of the tested range. Run this drill again with Center sens set to ${r.sens.toFixed(2)}.</div>`;
-    if (isFinite(r.fitSens) && Math.abs(r.fitSens - r.sens) > 0.005) warn += `<div class="sub warn">The fit pointed to ${r.fitSens.toFixed(2)}, outside your ergonomic range, so it was limited to ${r.sens.toFixed(2)}.</div>`;
+    if (r.edge) warn += `<div class="sub warn">Your best score was at the edge of the tested range. Run this drill again with Center sens set to ${r.sens.toFixed(SD())}.</div>`;
+    if (isFinite(r.fitSens) && Math.abs(r.fitSens - r.sens) > EPS()) warn += `<div class="sub warn">The fit pointed to ${r.fitSens.toFixed(SD())}, outside your ergonomic range, so it was limited to ${r.sens.toFixed(SD())}.</div>`;
     if (r.hitBound) warn += `<div class="sub warn">Reach matching kept pushing against the ergonomic limit. That points to an adaptation habit, not a real optimum; use Fitts throughput instead.</div>`;
     const chart = r.rounds ? reachChart(r.rounds) : scoreChart(r, M.axis || 'SCORE', M.fmt);
-    return `<article class="card"><div class="card-head"><h3>${name}</h3><span class="val">${r.sens.toFixed(2)}</span></div>
+    return `<article class="card"><div class="card-head"><h3>${name}</h3><span class="val">${r.sens.toFixed(SD())}</span></div>
       <div class="sub">${sub}</div>${warn}<div class="chart">${chart}</div></article>`;
   }
 
@@ -1064,7 +1147,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     if (R.length > 1) s += `<polyline fill="none" stroke="var(--muted)" stroke-width="1.5" points="${R.map((r, i) => `${x(i)},${y(r.reach)}`).join(' ')}"/>`;
     R.forEach((r, i) => {
       s += `<circle cx="${x(i)}" cy="${y(r.reach)}" r="${i === R.length - 1 ? 6 : 4.5}" fill="var(--${kd(r.reach)})"/>`;
-      s += `<text x="${x(i)}" y="${h - Bm + 18}" text-anchor="middle" fill="var(--fg)" font-family="IBM Plex Mono, monospace" font-size="11">${r.sens.toFixed(2)}</text>`;
+      s += `<text x="${x(i)}" y="${h - Bm + 18}" text-anchor="middle" fill="var(--fg)" font-family="IBM Plex Mono, monospace" font-size="11">${r.sens.toFixed(SD())}</text>`;
       s += `<text x="${x(i)}" y="${h - Bm + 32}" text-anchor="middle" ${AX} font-size="10">R${i + 1}</text>`;
     });
     return s + '</svg>';
@@ -1094,20 +1177,20 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     }
     const bs = Math.min(s1, Math.max(s0, r.sens));
     s += `<line x1="${x(bs)}" x2="${x(bs)}" y1="${T}" y2="${h - Bm}" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
-    s += `<text x="${x(bs) + 6}" y="${T + 12}" fill="var(--accent)" font-family="IBM Plex Mono, monospace" font-size="11">best ${r.sens.toFixed(2)}</text>`;
+    s += `<text x="${x(bs) + 6}" y="${T + 12}" fill="var(--accent)" font-family="IBM Plex Mono, monospace" font-size="11">best ${r.sens.toFixed(SD())}</text>`;
     pts.forEach(p => {
       s += `<circle cx="${x(p.sens)}" cy="${y(p.score)}" r="5" fill="var(--fg)"/>`;
-      s += `<text x="${x(p.sens)}" y="${h - Bm + 18}" text-anchor="middle" fill="var(--fg)" font-family="IBM Plex Mono, monospace" font-size="11">${p.sens.toFixed(2)}</text>`;
+      s += `<text x="${x(p.sens)}" y="${h - Bm + 18}" text-anchor="middle" fill="var(--fg)" font-family="IBM Plex Mono, monospace" font-size="11">${p.sens.toFixed(SD())}</text>`;
     });
     s += `<text x="${(L + w - Rt) / 2}" y="${h - 4}" text-anchor="middle" ${AX} font-size="10">SENS TESTED</text>`;
     return s + '</svg>';
   }
 
   // ---- export for AI analysis ----
-  const PROMPT = `You are an expert in human motor control, Fitts' law and competitive FPS aiming. Below is raw data from a browser-based mouse sensitivity calibration for Call of Duty: Warzone. Please analyze it and recommend a sensitivity.
+  const promptText = () => `You are an expert in human motor control, Fitts' law and competitive FPS aiming. Below is raw data from a browser-based mouse sensitivity calibration for ${G().name === 'Warzone' ? 'Call of Duty: Warzone' : G().name}. Please analyze it and recommend a sensitivity.
 
 Context:
-- Units: angles in degrees of in-game view rotation, times in milliseconds. Warzone turns 0.0066 degrees per mouse count at sens 1, so cm per 360 = 360 / (0.0066 * sens * dpi) * 2.54.
+- Units: angles in degrees of in-game view rotation, times in milliseconds. ${G().name} turns ${G().yaw} degrees per mouse count at sens 1, so cm per 360 = 360 / (${G().yaw} * sens * dpi) * 2.54.${G().fixedFov ? ` FOV is fixed at ${G().fixedFov} degrees horizontal.` : ''}
 - The player has been playing at a very high sensitivity (about 1.2 to 2 cm per 360 at 5200 to 7200 DPI) and says their flicks are rarely accurate. They may be over-adapted to that speed.
 - Flick and micro-adjust blocks test one sens each for a set number of targets, in shuffled order; the first 2 targets of each block are warm-up after a sens change. A target ends on the first click (hit or miss) unless the method is "reach".
 - Tracking blocks score the fraction of time the crosshair stayed within the target radius on a strafing target; the first 220 ms after each direction reversal is not scored (reaction time). Target motion settings are in constants.trackTargetMotion.
@@ -1116,7 +1199,7 @@ Please:
 1. Check data quality: warm-up effects, outliers, timeouts, and learning or fatigue across blocks (use the "order" field, which is global run order).
 2. For each drill, estimate the sens that maximizes performance and give an uncertainty range. Say whether the curve fit the page used looks reasonable.
 3. Look for signs of over-adaptation to high sens: systematic undershoot of the first movement (reach well below ~0.9), many corrections, large endpoint spread (dx), misses that fall short versus past the target, and whether performance drops faster at low or at high sens.
-4. Recommend one Warzone sens and a transition plan from the current high sens (steps, how long at each step, and what to re-test), respecting the ergonomic limits in the setup section.
+4. Recommend one ${G().name} sens and a transition plan from the current high sens (steps, how long at each step, and what to re-test), respecting the ergonomic limits in the setup section.
 5. Say what additional data would make you more confident.
 
 Field definitions are in the "definitions" section of the JSON.`;
@@ -1151,26 +1234,26 @@ Field definitions are in the "definitions" section of the JSON.`;
     };
     const o = overall(saved);
     const data = {
-      tool: 'Warzone Sens Calibrator', version: VERSION, exportedAt: new Date().toISOString(),
+      tool: 'Warzone Sens Calibrator', game: G().name, version: VERSION, exportedAt: new Date().toISOString(),
       setup: {
-        dpi: cfg.dpi, fovSetting: cfg.fov, centerSens: cfg.startSens, centerCm360: r2(cm360(cfg.startSens)),
+        dpi: cfg.dpi, fovSetting: fovNow(), sensDecimals: SD(), centerSens: cfg.startSens, centerCm360: r2(cm360(cfg.startSens)),
         method: cfg.method, targetsPerBlock: cfg.perBlock, warmupPerBlock: WARMUP, nextTargetDelayMs: cfg.gap,
         rawInput: rawInput, browserScaleCorrection: scale, mousepadCm: cfg.padCm,
-        ergonomicRange: { sensMin: r2(b.lo), sensMax: r2(b.hi), cm360Slowest: r2(b.slowCm), cm360Fastest: r2(b.fastCm), jitterAssumptionMm: JITTER_MM }
+        ergonomicRange: { sensMin: rs(b.lo), sensMax: rs(b.hi), cm360Slowest: r2(b.slowCm), cm360Fastest: r2(b.fastCm), jitterAssumptionMm: JITTER_MM }
       },
       constants: {
-        degPerCountAtSens1: YAW, flickTargetRadiusDeg: HIT_DEG, microTargetRadiusDeg: MICRO_R, trackTargetRadiusDeg: TRACK_R,
+        degPerCountAtSens1: yaw(), flickTargetRadiusDeg: HIT_DEG, microTargetRadiusDeg: MICRO_R, trackTargetRadiusDeg: TRACK_R,
         flickDistanceDeg: '20 to 90, random direction (mostly horizontal)', microDistanceDeg: '3 to 12, any direction',
         flickTimeoutMs: TIMEOUT_MS, microTimeoutMs: MICRO_TIMEOUT, trackScoredMs: TRACK_MS, trackSettleMs: SETTLE_MS,
         trackTargetMotion: { preset: cfg.trackSpeed, ...TRACK_PRESETS[cfg.trackSpeed], units: 'vmin/vmax deg/s, tmin/tmax ms between direction changes, acc deg/s^2' },
         trackReactionWindowExcludedMs: REACT_MS, bracketMultipliers: BRACKET, repsPerSens: REPS,
-        blendWeights: WEIGHTS, reachMethodTarget: METHODS.reach.targetReach
+        blendWeights: G().weights, reachMethodTarget: METHODS.reach.targetReach
       },
-      overall: o && { sens: o.sens, cm360: r2(cm360(o.sens)), pulledToErgonomicEdge: o.clamped, parts: o.parts.map(p => ({ drill: p.k, sens: r2(p.s), share: r2(p.share) })) },
+      overall: o && { sens: o.sens, cm360: r2(cm360(o.sens)), pulledToErgonomicEdge: o.clamped, parts: o.parts.map(p => ({ drill: p.k, sens: rs(p.s), share: r2(p.share) })) },
       drills: { flick: strip(saved.flick) || null, track: strip(saved.track) || null, micro: strip(saved.micro) || null },
       definitions: DEFINITIONS
     };
-    return { data, text: `${PROMPT}\n\n\`\`\`json\n${JSON.stringify(data, null, 1)}\n\`\`\`\n` };
+    return { data, text: `${promptText()}\n\n\`\`\`json\n${JSON.stringify(data, null, 1)}\n\`\`\`\n` };
   }
 
   let lastExport = null;
@@ -1190,7 +1273,7 @@ Field definitions are in the "definitions" section of the JSON.`;
     if (!lastExport) return;
     try {
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([JSON.stringify({ prompt: PROMPT, ...lastExport.data }, null, 2)], { type: 'application/json' }));
+      a.href = URL.createObjectURL(new Blob([JSON.stringify({ prompt: promptText(), ...lastExport.data }, null, 2)], { type: 'application/json' }));
       a.download = `wz-sens-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(a); a.click(); a.remove();
       $('export-note').textContent = 'If nothing downloaded, use Copy instead.';
@@ -1200,11 +1283,11 @@ Field definitions are in the "definitions" section of the JSON.`;
   $('clear').addEventListener('click', () => {
     if (!clearArmed) { clearArmed = true; $('clear').textContent = 'Click again to clear'; setTimeout(() => { clearArmed = false; $('clear').textContent = 'Clear saved results'; }, 3000); return; }
     clearArmed = false; $('clear').textContent = 'Clear saved results';
-    saved = {}; S = null; state = 'idle'; persist(); renderResults(); updateOverlay();
+    saved = savedAll[cfg.game] = {}; S = null; state = 'idle'; persist(); renderResults(); updateOverlay();
     $('export-out').hidden = true;
   });
 
-  readInputs(); renderScale(); renderResults(); updateOverlay();
+  readInputs(); showCm(); renderScale(); renderResults(); updateOverlay();
   requestAnimationFrame(loop);
   window.__cal = { analyzeTrial, fitBest, overall, METHODS, bounds, bracketValues };
 })();

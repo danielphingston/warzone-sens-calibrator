@@ -1,8 +1,17 @@
 # Warzone Sens Calibrator
 
-A browser tool that finds your Call of Duty: Warzone mouse sensitivity from how you actually aim.
+A browser tool that finds your mouse sensitivity for **Call of Duty: Warzone** or **Valorant** from how you actually aim.
 
 **Live:** https://danielphingston.github.io/warzone-sens-calibrator/
+
+## Games
+
+| Game | Degrees per count at sens 1 | Sens decimals | FOV | Blend (tracking / flicks / micro) |
+|---|---|---|---|---|
+| Warzone | 0.0066 | 2 | your setting | 45 / 35 / 20 |
+| Valorant | 0.07 | 3 | fixed 103° | 20 / 45 / 35 |
+
+Center sens and cm/360 are linked: edit either one. Switching games keeps the same cm/360, and results are saved separately per game.
 
 ## Drills
 
