@@ -30,9 +30,25 @@ Each drill tests five sens values twice in shuffled order (first 2 targets of ea
 | **Precision-first** | first-click hits, overshoot spread relative to distance | hit rate ÷ (1 + 4.133·SD(overshoot/D)) |
 | **Reach matching** (legacy) | where the first fast movement stopped | steps sens toward a 93% reach (primary movements normally undershoot), ±15% per round |
 
+## Finding the peak
+
+- **Curve fit:** a quadratic of ln(score) vs ln(sens) through every block (performance falls off in proportion, so the log scale avoids being dragged toward the edge by a steep side). The reported sens is the fitted curve's highest point inside the tested range.
+- **Likely range:** 10th–90th percentile of the peak over 300 bootstrap resamples of the blocks.
+- **Flat:** flagged when the curve rises less than 1.5× the block noise or the likely range covers 75%+ of the tested range. Flat drills count at 25% weight in the overall blend. In simulation this flags 77% of players with no real preference and 2% of players with one.
+- **Search – Fixed bracket:** five values ×0.62–×1.6 around the center, twice each, shuffled (10 blocks).
+- **Search – Bayesian adaptive:** 3 starting blocks, then Thompson sampling from the posterior of the same model picks each next sens; stops when 80% of plausible peaks lie within about ±12% (5–12 blocks). In simulation it typically finishes in 6 blocks with accuracy close to the 10-block bracket.
+
+## Reaction time
+
+On by default: flick and micro throughput use time from movement onset (click time minus reaction time; reactions under 100 ms, from movement carried over from the previous target, use the block median). Tracking skips the 220 ms after each direction change. Turn it off to score raw times.
+
+## Practice
+
+Unlimited flicks, tracking or micro-adjust at a fixed sens with live stats. Nothing is saved.
+
 ## Ergonomic range
 
-All tests and results stay between a slow limit (a 180° turn fits in 80% of your mousepad width) and a fast limit (default 12 cm/360, where ~0.1 mm of hand jitter moves aim ~0.3°). Both are adjustable.
+By default, tests and results stay between a slow limit (a 180° turn fits in 80% of your mousepad width) and a fast limit (default 12 cm/360, where ~0.1 mm of hand jitter moves aim ~0.3°). Both are adjustable, and **Enforce** can be turned off to test anywhere from 2 to 200 cm/360; results outside the recommended range are marked.
 
 ## Export
 
