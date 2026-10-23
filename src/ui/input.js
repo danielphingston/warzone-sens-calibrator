@@ -5,7 +5,7 @@ import { persist } from '../app/storage.js';
 import { emit, on } from '../app/events.js';
 import { startSession, beginDrill, resume, clickTarget, refitSaved } from '../app/session.js';
 import { r2 } from '../core/stats.js';
-import { setOverlay, updateOverlay, renderRaw, renderScale } from './overlay.js';
+import { setOverlay, showNotice, clearNotice, updateOverlay, renderRaw, renderScale } from './overlay.js';
 import { readInputs, showCm } from './settings.js';
 
 async function lock() {
@@ -68,7 +68,7 @@ function finishMeasure() {
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   app.state = app.session ? (app.session.step >= app.session.queue.length ? 'done' : 'paused') : 'idle';
   if (counts < expected * 0.2) {
-    setOverlay('Scaling check didn’t register', 'Move the mouse a full 10 cm along a ruler between the two clicks, then try again.');
+    showNotice('Scaling check didn’t register', 'Move the mouse a full 10 cm along a ruler between the two clicks, then try again.');
     return;
   }
   const f = counts / expected;
@@ -78,17 +78,17 @@ function finishMeasure() {
   if (app.rawInput && Math.abs(f - 1) > 0.07) {
     const was = cfg.dpi, dpi = Math.round(counts / (10 / 2.54) / 50) * 50;
     app.scale = 1; $('dpi').value = dpi; readInputs(); showCm(); renderScale(); refitSaved(); emit('results');
-    setOverlay(`Your mouse is at about ${dpi} DPI`, `Measured ${Math.round(counts)} counts for 10 cm; ${was} DPI would give ${Math.round(expected)}. With raw input the game sees the same counts, so DPI is now set to ${dpi} and every sens is worked out for it. If that's wrong, check the DPI in your mouse software and measure again.`);
+    showNotice(`Your mouse is at about ${dpi} DPI`, `Measured ${Math.round(counts)} counts for 10 cm; ${was} DPI would give ${Math.round(expected)}. With raw input the game sees the same counts, so DPI is now set to ${dpi} and every sens is worked out for it. If that's wrong, check the DPI in your mouse software and measure again.`);
     return;
   }
   app.scale = Math.abs(f - 1) <= 0.07 ? 1 : r2(f);
   persist(); renderScale();
-  setOverlay(app.scale === 1 ? 'Mouse scaling matches' : `Corrected for ×${app.scale.toFixed(2)} scaling`,
+  showNotice(app.scale === 1 ? 'Mouse scaling matches' : `Corrected for ×${app.scale.toFixed(2)} scaling`,
     app.scale === 1 ? `Measured ${Math.round(counts)} counts for 10 cm, close to the ${Math.round(expected)} expected at ${cfg.dpi} DPI. You're set.`
                 : `Measured ${Math.round(counts)} counts for 10 cm; ${cfg.dpi} DPI should give ${Math.round(expected)}. The calibrator now compensates. Check that your mouse really is at ${cfg.dpi} DPI.`);
 }
 
-const start = () => { readInputs(); startSession(); };
+const start = () => { clearNotice(); readInputs(); startSession(); };
 
 export function initInput() {
   document.addEventListener('pointerlockchange', onLockChange);

@@ -4,8 +4,14 @@ import { cfg, app, SD, cm360, overall } from '../app/state.js';
 import { DRILLS } from '../registry/drills.js';
 
 export function setOverlay(title, text) { $('ov-title').textContent = title; $('ov-text').textContent = text; $('overlay').hidden = false; }
+// A message that stays up until the mouse is locked again or a test starts. Unlocking the mouse
+// redraws the overlay a moment later, which would otherwise replace it straight away.
+let notice = null;
+export function showNotice(title, text) { notice = { title, text }; setOverlay(title, text); }
+export const clearNotice = () => { notice = null; };
 export function updateOverlay() {
-  if (app.locked) { $('overlay').hidden = true; return; }
+  if (app.locked) { notice = null; $('overlay').hidden = true; return; }
+  if (notice) { setOverlay(notice.title, notice.text); return; }
   const S = app.session, d = S && S.drill, name = d ? DRILLS[d.type].name : '';
   const stepTxt = S && S.queue.length > 1 ? ` (${Math.min(S.step + 1, S.queue.length)} of ${S.queue.length})` : '';
   if (app.state === 'idle') setOverlay('Ready when you are', 'Pick a test and a scoring method, then click here. Press Esc any time to pause.');
