@@ -20,7 +20,7 @@ Center sens and cm/360 are linked: edit either one. Switching games keeps the sa
 - **Micro-adjust** – small targets 3–12° away.
 - **Full test** – all three, blended on a log scale: tracking 45%, flicks 35%, micro 20%.
 
-Each drill tests five sens values twice in shuffled order (first 2 targets of each block are warm-up) and fits a parabola of score vs ln(sens) to find the peak.
+Each drill tests five sens values twice, in a shuffled order that is then played back in reverse (A B C D E, E D C B A), so every sens sits at the same average point in the run. The first 2 targets of each block are warm-up. A parabola of ln(score) vs ln(sens) finds the peak.
 
 ## Scoring methods (selectable)
 
@@ -32,10 +32,11 @@ Each drill tests five sens values twice in shuffled order (first 2 targets of ea
 
 ## Finding the peak
 
-- **Curve fit:** a quadratic of ln(score) vs ln(sens) through every block (performance falls off in proportion, so the log scale avoids being dragged toward the edge by a steep side). The reported sens is the fitted curve's highest point inside the tested range.
-- **Likely range:** 10th–90th percentile of the peak over 300 bootstrap resamples of the blocks.
-- **Flat:** flagged when the curve rises less than 1.5× the block noise or the likely range covers 75%+ of the tested range. Flat drills count at 25% weight in the overall blend. In simulation this flags 77% of players with no real preference and 2% of players with one.
-- **Search – Fixed bracket:** five values ×0.62–×1.6 around the center, twice each, shuffled (10 blocks).
+- **Curve fit:** a quadratic of ln(score) vs ln(sens) through every block (performance falls off in proportion, so the log scale avoids being dragged toward the edge by a steep side). With the fixed bracket the fit also includes a straight line in block order, so scores that climb through the run as you warm up (or sag with fatigue) aren't read as a sens effect. The reported sens is the fitted curve's highest point inside the tested range.
+- **Likely range:** 10th–90th percentile of the peak over 300 bootstrap resamples of the blocks (resamples with fewer than 3 distinct sens values are skipped).
+- **Flat:** flagged when the curve rises less than 1.5× the block noise, the likely range covers 75%+ of the tested range, or the curve bends upward with its low point inside the range (the middle scoring worst is noise, not a preference). On a flat curve the highest point is just whichever end happened to score higher, so a flat drill reports the average of the bootstrap peaks instead. Flat drills count at 25% weight in the overall blend.
+- **Older results** are refitted with the current math when the page loads, since every block is stored.
+- **Search – Fixed bracket:** five values ×0.62–×1.6 around the center, twice each, shuffled then mirrored (10 blocks).
 - **Search – Bayesian adaptive:** 3 starting blocks, then Thompson sampling from the posterior of the same model picks each next sens; stops when 80% of plausible peaks lie within about ±12% (5–12 blocks). In simulation it typically finishes in 6 blocks with accuracy close to the 10-block bracket.
 
 ## Reaction time
@@ -50,13 +51,17 @@ Turn on the Practice toggle and pick Flicks, Tracking or Micro-adjust under Test
 
 By default, tests and results stay between a slow limit (a 180° turn fits in 80% of your mousepad width) and a fast limit (default 12 cm/360, where ~0.1 mm of hand jitter moves aim ~0.3°). Both are adjustable, and **Enforce** can be turned off to test anywhere from 2 to 200 cm/360; results outside the recommended range are marked.
 
+## Mouse scaling check
+
+Move the mouse 10 cm along a ruler between two clicks. With raw input on, the browser sees the same counts the game does, so a mismatch means the mouse isn't at the DPI you entered: the DPI field is updated to the measured value. Without raw input, Windows pointer settings can scale movement, and the calibrator compensates instead.
+
 ## Video recording
 
 Recording is off by default. Turn on **Record runs** in the sidebar and each run is recorded as a small WebM (640×360, 30 fps, about 3–4 MB a minute): tests from Start until they finish, practice from Start until Esc. Pausing a test with Esc pauses the video, so the clip has no dead time. A timer is burned into each frame, and every target and tracking block in the export carries videoT (seconds into the video), so an AI can line the numbers up with what it sees. Download the last run from the sidebar.
 
 ## Export
 
-"Build export" produces an analysis prompt plus every block and target with raw readings and field definitions, ready to paste into an AI.
+"Build export" produces an analysis prompt plus every block and target with raw readings and field definitions, ready to paste into an AI. An optional "About you" note is added to the prompt. Each drill carries the settings it was run with (`testedWith`), since drills can come from different sessions, and each block has `t`, seconds since the session started.
 
 ## References
 

@@ -169,6 +169,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 .data p { margin: 0; color: var(--muted); font-size: 14px; max-width: 75ch; }
 .data textarea { width: 100%; min-height: 280px; resize: vertical; font: 12px/1.45 var(--font-data); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 10px; }
 .data .note { font: 12px var(--font-data); color: var(--muted); }
+.data #notes, .sidebar .data #notes { min-height: 64px; }
 
 .how { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
 .how div { border-top: 2px solid var(--line); padding-top: 10px; }
@@ -284,6 +285,8 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
         </div>
       </div>
       <p>An analysis prompt, your settings and every target's raw readings in one block. Paste it into Claude or another AI for a second opinion.</p>
+      <label class="note" for="notes">About you (optional, added to the prompt)</label>
+      <textarea id="notes" maxlength="1000" placeholder="e.g. I've played at about 2 cm/360 for years and my flicks rarely land."></textarea>
       <div id="export-out" hidden>
         <textarea id="export-text" readonly aria-label="Export text"></textarea>
         <div class="data-head" style="padding-top:10px">
@@ -469,7 +472,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   const methodFor = id => METHODS[id] || TRACK_METHOD;
 
   // ---- settings ----
-  const cfg = { game: 'warzone', dpi: 5200, startSens: 1.5, fov: 120, perBlock: 10, gap: 350, mode: 'full', method: 'throughput', padCm: 45, fastCm: 12, trackSpeed: 'real', search: 'bracket', excludeRT: true, enforceErgo: true, practice: false, record: false };
+  const cfg = { game: 'warzone', dpi: 5200, startSens: 1.5, fov: 120, perBlock: 10, gap: 350, mode: 'full', method: 'throughput', padCm: 45, fastCm: 12, trackSpeed: 'real', search: 'bracket', excludeRT: true, enforceErgo: true, practice: false, record: false, notes: '' };
   let scale = 1;                            // browser movement units per real mouse count
   let savedAll = {};                        // { warzone: {...}, valorant: {...} }
   let saved = {};                           // current game's { flick, track, micro } latest result + raw data per drill
@@ -477,7 +480,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     const s3 = JSON.parse(localStorage.getItem('wzcal3') || 'null');
     const old = JSON.parse(localStorage.getItem('wzcal') || 'null');
     const src = s3 || old;
-    if (src) { const c = src.cfg || {}; ['game', 'dpi', 'fov', 'gap', 'padCm', 'fastCm', 'mode', 'method', 'trackSpeed', 'search', 'excludeRT', 'enforceErgo', 'practice', 'record'].forEach(k => { if (c[k] !== undefined) cfg[k] = c[k]; });
+    if (src) { const c = src.cfg || {}; ['game', 'dpi', 'fov', 'gap', 'padCm', 'fastCm', 'mode', 'method', 'trackSpeed', 'search', 'excludeRT', 'enforceErgo', 'practice', 'record', 'notes'].forEach(k => { if (c[k] !== undefined) cfg[k] = c[k]; });
       // Older versions had Practice as a Test tab with its own drill picker.
       if (cfg.mode === 'practice') { cfg.mode = DRILLS[c.practiceDrill] ? c.practiceDrill : 'flick'; cfg.practice = true; }
       scale = src.scale || 1; }
@@ -497,6 +500,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   $('search').value = cfg.search; $('rt').checked = cfg.excludeRT !== false; $('ergo').checked = cfg.enforceErgo !== false;
   $('practice').checked = !!cfg.practice;
   $('rec-on').checked = !!cfg.record;
+  $('notes').value = typeof cfg.notes === 'string' ? cfg.notes : '';
   for (const [name, val] of [['mode', cfg.mode], ['game', cfg.game]]) {
     const el = document.querySelector(`input[name="${name}"][value="${val}"]`);
     if (el) el.checked = true;
@@ -521,6 +525,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     cfg.excludeRT = $('rt').checked;
     cfg.enforceErgo = $('ergo').checked;
     cfg.record = $('rec-on').checked;
+    cfg.notes = $('notes').value.slice(0, 1000);
     // Practice reuses the Test selection as its drill; a full test can't be practiced, so it falls back to Flicks.
     cfg.practice = $('practice').checked;
     $('m-full').disabled = cfg.practice;
@@ -595,7 +600,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     $('fov').value = G().fixedFov || cfg.fov;     // restore your own FOV before it's read back
     saved = savedAll[cfg.game] = savedAll[cfg.game] || {};
     cfg.startSens = rs(sensAtCm(cm)); showSens();
-    readInputs(); showCm(); renderResults(); updateOverlay();
+    readInputs(); showCm(); refitSaved(); renderResults(); updateOverlay();
   }));
   document.querySelectorAll('input[name="mode"]').forEach(el => el.addEventListener('change', readInputs));
   $('method').addEventListener('change', readInputs);
@@ -604,6 +609,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   $('rt').addEventListener('change', readInputs);
   $('ergo').addEventListener('change', () => { readInputs(); renderResults(); });
   $('practice').addEventListener('change', readInputs);
+  $('notes').addEventListener('change', readInputs);
 
   // ---- session state ----
   // S = { queue, step, drill, order }
@@ -626,8 +632,10 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
       const b = bounds(), init = shuffle([...new Set(BAYES.init.map(m => rs(clampSens(center * m, b))))]);
       return { type, method, center, blocks: init, bi: 0, records: [], sens: init[0], cur: null, bayes: true };
     }
-    const base = bracketValues(center), blocks = [];
-    for (let r = 0; r < REPS; r++) blocks.push(...shuffle([...base]));
+    // Every other rep runs in reverse (A B C D E, E D C B A), so each sens sits at the same average
+    // position in the run and steady practice or fatigue can't favor one end of the bracket.
+    const base = shuffle(bracketValues(center)), blocks = [];
+    for (let r = 0; r < REPS; r++) blocks.push(...(r % 2 ? [...base].reverse() : base));
     return { type, method, center, blocks, bi: 0, records: [], sens: blocks[0], cur: null };
   }
 
@@ -635,7 +643,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     readInputs();
     const practice = cfg.practice;
     const queue = practice ? [cfg.mode] : cfg.mode === 'full' ? ['flick', 'track', 'micro'] : [cfg.mode];
-    S = { queue, step: 0, order: 0, drill: null, practice, startedAt: new Date().toISOString() };
+    S = { queue, step: 0, order: 0, drill: null, practice, startedAt: new Date().toISOString(), t0: performance.now() };
     S.drill = makeDrill(queue[0]);
     cam = { yaw: 0, pitch: 0 }; trial = null; trk = null; between = null; ghost = null; flash = null;
     state = 'ready';
@@ -662,13 +670,16 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   }
 
   // ---- primary-submovement analysis (where the first fast movement stopped) ----
+  // A degree of yaw covers only cos(pitch) degrees of view when you look up or down, so yaw
+  // differences are scaled by it to measure real angles (matching the hit test).
+  const yawScale = tr => Math.cos((tr.p0 + tr.tp) / 2 * Math.PI / 180);
   function analyzeTrial(tr, tEnd) {
-    const dy = tr.ty - tr.y0, dp = tr.tp - tr.p0, dist = Math.hypot(dy, dp);
+    const kx = yawScale(tr), dy = (tr.ty - tr.y0) * kx, dp = tr.tp - tr.p0, dist = Math.hypot(dy, dp);
     const ux = dy / dist, uy = dp / dist;
     const out = { valid: false, time: tEnd - tr.t0 };
     const s = tr.samples.filter(p => p.t >= tr.t0 - 1 && p.t <= tEnd + 1);
     if (s.length < 4 || out.time < 80) return out;
-    const prog = s.map(p => ((p.yaw - tr.y0) * ux + (p.pitch - tr.p0) * uy) / dist);
+    const prog = s.map(p => ((p.yaw - tr.y0) * kx * ux + (p.pitch - tr.p0) * uy) / dist);
     // resample (sample-and-hold) onto a 4 ms grid
     const DT = 4, n = Math.floor((tEnd - tr.t0) / DT) + 1, g = new Float64Array(n), gi = new Int32Array(n);
     for (let i = 0, j = 0; i < n; i++) {
@@ -745,7 +756,23 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   // "flat" when the curve rises less than block-to-block noise, or the likely range covers most
   // of what was tested; flat drills count for less in the overall blend.
   let FLAT_K = 1.5;                         // flat when the curve rises less than this many noise SDs
-  function fitBest(records) {
+  // Least squares for any number of columns (normal equations, Gaussian elimination with pivoting).
+  function lsq(rows, Y) {
+    const p = rows[0].length, A = Array.from({ length: p }, () => new Array(p + 1).fill(0));
+    rows.forEach((f, i) => { for (let r = 0; r < p; r++) { A[r][p] += f[r] * Y[i]; for (let c = 0; c < p; c++) A[r][c] += f[r] * f[c]; } });
+    for (let c = 0; c < p; c++) {
+      let m = c; for (let r = c + 1; r < p; r++) if (Math.abs(A[r][c]) > Math.abs(A[m][c])) m = r;
+      if (!(Math.abs(A[m][c]) > 1e-9)) return null;
+      [A[c], A[m]] = [A[m], A[c]];
+      for (let r = 0; r < p; r++) if (r !== c) { const k = A[r][c] / A[c][c]; for (let j = c; j <= p; j++) A[r][j] -= k * A[c][j]; }
+    }
+    return A.map((row, i) => row[p] / row[i]);
+  }
+  // trend: also fit a straight line in run order. Scores often climb through a run as you warm up
+  // (or sag with fatigue); the term soaks that up so it isn't read as a sens effect. Only used for the
+  // fixed bracket, where run order is spread evenly over the sens values; Bayesian runs test later
+  // blocks near the peak, so order and sens are tangled there.
+  function fitBest(records, { trend = false } = {}) {
     const R = records.filter(r => isFinite(r.score));
     const by = {};
     R.forEach(r => { (by[r.sens] = by[r.sens] || []).push(r.score); });
@@ -756,25 +783,39 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     if (pts.length < 3) return fallback;
     const xm = mean(R.map(r => Math.log(r.sens)));
     const X = R.map(r => Math.log(r.sens) - xm), Y = R.map(r => lscore(r.score));
+    const useTrend = trend && R.length >= 7 && R.every(r => isFinite(r.order));
+    const om = useTrend ? mean(R.map(r => r.order)) : 0, O = R.map(r => useTrend ? r.order - om : 0);
     const x0 = Math.log(pts[0].sens) - xm, x1 = Math.log(pts[pts.length - 1].sens) - xm, span = x1 - x0;
-    const q = quadFit(X, Y);
+    const fitOn = idx => {
+      if (new Set(idx.map(i => X[i])).size < 3) return null;   // a parabola needs 3 distinct sens values
+      const s = lsq(idx.map(i => useTrend ? [1, X[i], X[i] * X[i], O[i]] : [1, X[i], X[i] * X[i]]), idx.map(i => Y[i]));
+      return s && { a: s[0], b: s[1], c: s[2], d: useTrend ? s[3] : 0 };
+    };
+    const q = fitOn(R.map((_, i) => i));
     if (!q) return fallback;
     const bx = peakOnRange(q, x0, x1);
     const rnd = seeded(R.length * 7919 + Math.round(mean(R.map(r => r.score)) * 1e4));
     const boots = [];
     for (let k = 0; k < 300; k++) {
-      const xi = [], yi = [];
-      for (let j = 0; j < R.length; j++) { const p = Math.floor(rnd() * R.length); xi.push(X[p]); yi.push(Y[p]); }
-      const qb = quadFit(xi, yi); if (qb) boots.push(peakOnRange(qb, x0, x1));
+      const qb = fitOn(R.map(() => Math.floor(rnd() * R.length)));
+      if (qb) boots.push(peakOnRange(qb, x0, x1));
     }
     boots.sort((a, b) => a - b);
     const lo = boots.length ? boots[Math.floor(boots.length * 0.1)] : x0, hi = boots.length ? boots[Math.floor(boots.length * 0.9)] : x1;
-    const noise = Math.sqrt(X.reduce((a, x, i) => a + (Y[i] - quadAt(q, x)) ** 2, 0) / Math.max(1, R.length - 3));
+    const noise = Math.sqrt(X.reduce((a, x, i) => a + (Y[i] - quadAt(q, x) - q.d * O[i]) ** 2, 0) / Math.max(1, R.length - (useTrend ? 4 : 3)));
     const vals = Array.from({ length: 21 }, (_, i) => quadAt(q, x0 + span * i / 20));
     const rise = Math.max(...vals) - Math.min(...vals);
-    const flat = rise < FLAT_K * noise || hi - lo > 0.75 * span;
+    // A curve that bends upward with its low point inside the range says the middle is worst. That isn't
+    // a preference for either end, just noise, so it counts as flat.
+    const vx = q.c > 0 ? -q.b / (2 * q.c) : NaN;
+    const ushape = vx > x0 + 0.15 * span && vx < x1 - 0.15 * span;
+    const flat = rise < FLAT_K * noise || hi - lo > 0.75 * span || ushape;
     const edge = !flat && (bx - x0 < 0.03 * span || x1 - bx < 0.03 * span);
-    return { sens: rs(Math.exp(bx + xm)), lo: rs(Math.exp(lo + xm)), hi: rs(Math.exp(hi + xm)), edge, flat, noise: r3(noise), rise: r3(rise), points: pts, curve: { ...q, xm, log: true } };
+    // On a flat curve the highest point is an arbitrary end of the range, so the result is the average
+    // (in log sens) of where the resampled curves peak instead.
+    const best = flat && boots.length ? mean(boots) : bx;
+    return { sens: rs(Math.exp(best + xm)), peakSens: rs(Math.exp(bx + xm)), lo: rs(Math.exp(lo + xm)), hi: rs(Math.exp(hi + xm)), edge, flat, noise: r3(noise), rise: r3(rise),
+      trendPerBlock: useTrend ? r3(q.d) : undefined, points: pts, curve: { a: q.a, b: q.b, c: q.c, xm, log: true } };
   }
 
   // ---- Bayesian adaptive search ----
@@ -845,8 +886,8 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     trial = null;
     tr.samples.push({ t, yaw: cam.yaw, pitch: cam.pitch });
     const a = analyzeTrial(tr, t), until = performance.now() + cfg.gap + 150;
-    const D = Math.hypot(tr.ty - tr.y0, tr.tp - tr.p0), ux = (tr.ty - tr.y0) / D, uy = (tr.tp - tr.p0) / D;
-    const ex = cam.yaw - tr.ty, ey = cam.pitch - tr.tp;
+    const kx = yawScale(tr), D = Math.hypot((tr.ty - tr.y0) * kx, tr.tp - tr.p0), ux = (tr.ty - tr.y0) * kx / D, uy = (tr.tp - tr.p0) / D;
+    const ex = (cam.yaw - tr.ty) * kx, ey = cam.pitch - tr.tp;
     const rec = {
       i: d.cur.trials.length, D: r3(D), dirDeg: Math.round(Math.atan2(uy, ux) * 180 / Math.PI),
       mt: Math.round(t - tr.t0), hit, timeout: !clicked, misses: tr.misses,
@@ -931,15 +972,16 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   }
 
   // ---- bracket blocks ----
+  const sinceStart = () => Math.round((performance.now() - S.t0) / 100) / 10;   // seconds, pauses included
   function endBlock() {
     const d = S.drill, M = methodFor(d.method);
     let rec;
     if (d.type === 'track') {
       const T = trk; trk = null;
-      rec = { order: S.order++, videoT: videoT(T.t0), sens: d.sens, score: T.total ? T.on / T.total : NaN, meanErrDeg: T.total ? r3(T.err / T.total) : null, lagDeg: T.lagT ? r3(T.lag / T.lagT) : null, scoredMs: Math.round(T.total * 1000) };
+      rec = { order: S.order++, t: sinceStart(), videoT: videoT(T.t0), sens: d.sens, score: T.total ? T.on / T.total : NaN, meanErrDeg: T.total ? r3(T.err / T.total) : null, lagDeg: T.lagT ? r3(T.lag / T.lagT) : null, scoredMs: Math.round(T.total * 1000) };
     } else {
       const tr = d.cur.trials, nw = tr.filter(t => !t.warmup);
-      rec = { order: S.order++, sens: d.sens, score: M.score(tr), hitRate: r3(mean(nw.map(t => t.hit ? 1 : 0))), meanMt: Math.round(mean(nw.filter(t => !t.timeout).map(t => t.mt))), trials: tr };
+      rec = { order: S.order++, t: sinceStart(), sens: d.sens, score: M.score(tr), hitRate: r3(mean(nw.map(t => t.hit ? 1 : 0))), meanMt: Math.round(mean(nw.filter(t => !t.timeout).map(t => t.mt))), trials: tr };
     }
     d.records.push(rec);
     flash = { text: isFinite(rec.score) ? `Block: ${M.fmt(rec.score)}` : 'Block: not enough clean targets', color: 'fg', until: performance.now() + 1300 };
@@ -952,7 +994,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     }
     if (d.bi < d.blocks.length) { startBlock(); renderResults(); }
     else {
-      const fit = fitBest(d.records), b = bounds();
+      const fit = fitBest(d.records, { trend: !d.bayes }), b = bounds();
       const lag = d.type === 'track' ? mean(d.records.map(r => r.lagDeg).filter(x => x !== null)) : undefined;
       d.result = { ...fit, sens: rs(clampSens(fit.sens, b)), fitSens: fit.sens, center: d.center, lag,
         search: d.bayes ? 'bayes' : 'bracket', blocksUsed: d.records.length, posterior: d.posterior, excludeRT: cfg.excludeRT };
@@ -965,6 +1007,9 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     const d = S.drill;
     saved[d.type] = {
       ...d.result, method: d.method, dpi: cfg.dpi, fov: fovNow(), game: cfg.game, date: new Date().toISOString().slice(0, 10),
+      // Settings as they were for this run, since the export's setup section shows today's settings.
+      session: { startedAt: S.startedAt, centerSens: d.center, scale, rawInput, excludeRT: cfg.excludeRT, enforceErgo: cfg.enforceErgo,
+        perBlock: cfg.perBlock, gapMs: cfg.gap, trackPreset: d.type === 'track' ? cfg.trackSpeed : undefined },
       blocks: d.adaptive ? undefined : d.records, rounds: d.adaptive ? d.rounds : undefined
     };
     persist();
@@ -981,6 +1026,16 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     renderResults(); updateOverlay();
   }
 
+  // Results keep every block, so results saved by an older version are refitted with the current math.
+  function refitSaved() {
+    for (const k of ['flick', 'track', 'micro']) {
+      const r = saved[k];
+      if (!r || r.rounds || !Array.isArray(r.blocks) || !r.blocks.length) continue;
+      const fit = fitBest(r.blocks, { trend: r.search !== 'bayes' }), b = bounds(), f = cfg.dpi / (r.dpi || cfg.dpi);
+      saved[k] = { ...r, ...fit, sens: rs(Math.min(b.hi * f, Math.max(b.lo * f, fit.sens))), fitSens: fit.sens };
+    }
+  }
+
   // ---- input ----
   async function lock() {
     // Fullscreen lets the browser skip compositing the page around the canvas, which cuts latency.
@@ -993,7 +1048,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
       try { const p = canvas.requestPointerLock(); if (p && p.then) await p; rawInput = false; }
       catch (e2) { setOverlay('Mouse lock was blocked', 'Your browser refused to lock the mouse. Click again, or open this page in Chrome or Edge on a desktop.'); return; }
     }
-    renderRaw();
+    renderRaw(); renderScale();
   }
 
   document.addEventListener('pointerlockchange', () => {
@@ -1076,6 +1131,15 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
       return;
     }
     const f = counts / expected;
+    // Raw input passes the mouse's own counts straight through, exactly as the game reads them. A mismatch
+    // then means the mouse isn't at the DPI entered, and correcting it here would hide that: the game would
+    // still turn faster or slower than the test did. So the DPI field is fixed instead.
+    if (rawInput && Math.abs(f - 1) > 0.07) {
+      const was = cfg.dpi, dpi = Math.round(counts / (10 / 2.54) / 50) * 50;
+      scale = 1; $('dpi').value = dpi; readInputs(); showCm(); renderScale(); refitSaved(); renderResults();
+      setOverlay(`Your mouse is at about ${dpi} DPI`, `Measured ${Math.round(counts)} counts for 10 cm; ${was} DPI would give ${Math.round(expected)}. With raw input the game sees the same counts, so DPI is now set to ${dpi} and every sens is worked out for it. If that's wrong, check the DPI in your mouse software and measure again.`);
+      return;
+    }
     scale = Math.abs(f - 1) <= 0.07 ? 1 : r2(f);
     persist(); renderScale();
     setOverlay(scale === 1 ? 'Mouse scaling matches' : `Corrected for ×${scale.toFixed(2)} scaling`,
@@ -1103,7 +1167,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   function renderScale() {
     const d = $('scale-dot'), t = $('scale-text');
     if (scale === 1) { d.className = 'dot'; t.textContent = 'Mouse scaling: ×1.00 (use the check if results look off)'; }
-    else { d.className = 'dot warn'; t.textContent = `Mouse scaling: corrected ×${scale.toFixed(2)}`; }
+    else { d.className = 'dot warn'; t.textContent = `Mouse scaling: corrected ×${scale.toFixed(2)}${rawInput ? '. With raw input on, this usually means the DPI field is wrong: run the check again' : ''}`; }
   }
 
   function renderMethod() {
@@ -1122,7 +1186,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
       <dl>
         <div><dt>Search: ${cfg.search === 'bayes' ? 'Bayesian adaptive' : 'Fixed bracket'}</dt><dd>${cfg.search === 'bayes'
           ? `Starts with 3 blocks (center sens ×0.7, ×1, ×1.4). After each block it refits the curve and picks the next sens by Thompson sampling: draw one plausible curve from what it has learned so far and test where that curve peaks. Testing concentrates near your likely best value, and the drill stops once 80% of plausible peaks fall within about ±12% (at least ${BAYES.min} blocks, at most ${BAYES.max}). Usually 6–8 blocks instead of 10.`
-          : 'Five sens values spread around the center (×0.62 to ×1.6), each tested twice in shuffled order: 10 blocks. Slower, but gives even coverage and a clean picture of the whole curve.'}${M.search === 'adaptive' ? ' Reach matching uses its own step-by-step search for flicks.' : ''}</dd></div>
+          : 'Five sens values spread around the center (×0.62 to ×1.6), each tested twice: a shuffled order, then the same order in reverse, so warming up during the run helps every value equally. 10 blocks. Slower, but gives even coverage and a clean picture of the whole curve.'}${M.search === 'adaptive' ? ' Reach matching uses its own step-by-step search for flicks.' : ''}</dd></div>
         <div><dt>Reaction time: ${cfg.excludeRT ? 'excluded' : 'included'}</dt><dd>${cfg.excludeRT
           ? 'Flick and micro times start when your hand starts moving, not when the target appears, because reaction time doesn’t depend on sens and only adds noise. If your hand was still moving from the last target, the block’s typical reaction time is used. Tracking skips the 220 ms after each direction change.'
           : 'Times run from the moment each target appears, and tracking scores every moment. Closer to how a real fight feels, but reaction time adds noise that has nothing to do with sens.'}</dd></div>
@@ -1461,12 +1525,12 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 
 Context:
 - Units: angles in degrees of in-game view rotation, times in milliseconds. ${G().name} turns ${G().yaw} degrees per mouse count at sens 1, so cm per 360 = 360 / (${G().yaw} * sens * dpi) * 2.54.${G().fixedFov ? ` FOV is fixed at ${G().fixedFov} degrees horizontal.` : ''}
-- The player has been playing at a very high sensitivity (about 1.2 to 2 cm per 360 at 5200 to 7200 DPI) and says their flicks are rarely accurate. They may be over-adapted to that speed.
-- Flick and micro-adjust blocks test one sens each for a set number of targets, in shuffled order; the first 2 targets of each block are warm-up after a sens change. A target ends on the first click (hit or miss) unless the method is "reach".
-- Tracking blocks score the fraction of time the crosshair stayed within the target radius on a strafing target; when setup.excludeReactionTime is true, the first 220 ms after each direction reversal is not scored. Target motion settings are in constants.trackTargetMotion.
+${cfg.notes.trim() ? `- From the player: ${cfg.notes.trim()}\n` : ''}- Flick and micro-adjust blocks test one sens each for a set number of targets, in shuffled order; the first 2 targets of each block are warm-up after a sens change. A target ends on the first click (hit or miss) unless the method is "reach".
+- Tracking blocks score the fraction of time the crosshair stayed within the target radius on a strafing target; when the drill's reactionTimeExcluded is true, the first 220 ms after each direction reversal is not scored. Target motion presets are in constants.trackTargetMotion; the preset used is testedWith.trackPreset.
+- Drills may come from different sessions or days, with different settings. Each drill's testedWith shows the settings it was run with; the setup section shows the settings at export time.
 
 Please:
-1. Check data quality: warm-up effects, outliers, timeouts, and learning or fatigue across blocks (use the "order" field, which is global run order).
+1. Check data quality: warm-up effects, outliers, timeouts, and learning or fatigue across blocks (use "order" and "t", which count within one test session).
 2. For each drill, estimate the sens that maximizes performance and give an uncertainty range. Say whether the curve fit the page used looks reasonable.
 3. Look for signs of over-adaptation to high sens: systematic undershoot of the first movement (reach well below ~0.9), many corrections, large endpoint spread (dx), misses that fall short versus past the target, and whether performance drops faster at low or at high sens.
 4. Recommend one ${G().name} sens and a transition plan from the current high sens (steps, how long at each step, and what to re-test), respecting the ergonomic limits in the setup section.
@@ -1492,13 +1556,15 @@ Field definitions are in the "definitions" section of the JSON.`;
     'trial.corrections': 'Number of corrective movements after the first one.',
     'trial.videoT': 'Seconds into the attached screen recording when this target appeared; null if it was not recorded.',
     'trial.warmup': 'First 2 targets after a sens change; excluded from scoring.',
-    'block.order': 'Global order the block was played in this session (for learning or fatigue effects).',
+    'block.order': 'Order the block was played within its test session; a full test numbers flicks, tracking and micro in one sequence. Drills with a different testedWith.startedAt came from other sessions, so their orders are not comparable.',
+    'block.t': 'Seconds from the start of the test session to the end of this block, pauses included.',
     'block.score': 'The block score under the drill method (throughput in bit/s, precision score, or tracking fraction on target).',
     'track.meanErrDeg': 'Mean angular distance between crosshair and target center while tracking.',
     'track.lagDeg': 'Mean signed distance along the target’s direction of motion. Positive = crosshair trailing behind, negative = running ahead.',
-    'fit': 'Least-squares quadratic of block score versus ln(sens) over all blocks; "sens" is the highest point of the fitted curve inside the tested range, limited to the ergonomic range. curve.xm is the ln(sens) the x-axis is centered on.',
+    'fit': 'Least-squares quadratic of ln(block score) versus ln(sens) over all blocks: ln(score) = a + b·u + c·u², u = ln(sens) − curve.xm. Fixed-bracket drills also fit a straight line in block order to absorb practice or fatigue (trendPerBlock, ln units per block). peakSens is the highest point of the curve inside the tested range. resultSens is peakSens, or for a flat drill the mean (in ln sens) of the bootstrap peaks, limited to the ergonomic range when limits are enforced.',
     'likelyRange': 'lo/hi: 10th and 90th percentile of the best sens over 300 bootstrap resamples of the blocks.',
-    'flat': 'True when the fitted curve rises less than the residual block noise, or the likely range covers more than 75% of the tested range. Flat drills count at 25% weight in the overall blend.',
+    'flat': 'True when the fitted curve rises less than 1.5× the residual block noise (curveRise and blockNoise, both in ln units), the likely range covers more than 75% of the tested range, or the curve bends upward with its low point inside the range. Flat drills count at 25% weight in the overall blend.',
+    'testedWith': 'Settings this drill was run with: session start, center sens and cm/360, mouse scaling correction, raw input, reaction-time exclusion, ergonomic limits, targets per block, delay between targets, tracking preset. Missing for results saved before this field existed.',
     'posterior': 'Bayesian search only: 80% interval of the posterior peak when the search stopped (width in ln units).',
     'excludeReactionTime': 'When true, throughput uses mt minus rt (time from movement onset). rt under 100 ms (movement carried over from the previous target) is replaced by the block median rt.'
   };
@@ -1508,6 +1574,8 @@ Field definitions are in the "definitions" section of the JSON.`;
     const strip = r => r && {
       method: r.method, resultSens: r.sens, fitSens: r.fitSens, edgeOfRange: r.edge, date: r.date, dpiAtTest: r.dpi, fovAtTest: r.fov,
       likelyRange: [r.lo, r.hi], flat: r.flat, blockNoise: r.noise, curveRise: r.rise, search: r.search, blocksUsed: r.blocksUsed, posterior: r.posterior, reactionTimeExcluded: r.excludeRT, points: r.points, curve: r.curve, trackingLagDeg: r.lag, hitErgonomicBound: r.hitBound,
+      peakSens: r.peakSens, trendPerBlock: r.trendPerBlock,
+      testedWith: r.session && { ...r.session, centerCm360: r2(360 / (yaw() * r.session.centerSens * (r.dpi || cfg.dpi)) * 2.54) },
       blocks: r.blocks, rounds: r.rounds
     };
     const o = overall(saved);
@@ -1651,7 +1719,7 @@ Field definitions are in the "definitions" section of the JSON.`;
     $('export-out').hidden = true;
   });
 
-  readInputs(); showCm(); renderScale(); renderResults(); updateOverlay();
+  readInputs(); showCm(); renderScale(); refitSaved(); renderResults(); updateOverlay();
   requestAnimationFrame(loop);
   window.__cal = { analyzeTrial, fitBest, overall, METHODS, bounds, bracketValues, bayesPosterior, BAYES, moveTime, cfg, setFlatK: k => { FLAT_K = k; } };
 })();
