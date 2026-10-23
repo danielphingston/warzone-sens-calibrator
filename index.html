@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Mouse sensitivity finder for Warzone and Valorant: flick, tracking and micro-adjust drills scored with Fitts throughput, Bayesian adaptive search, practice mode, automatic WebM recording and an AI-ready data export.">
+<meta name="description" content="Mouse sensitivity finder for Warzone and Valorant: flick, tracking and micro-adjust drills scored with Fitts throughput, Bayesian adaptive search, practice mode, optional WebM recording and an AI-ready data export.">
 <style>*,*::before,*::after{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Warzone Sens Calibrator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -299,6 +299,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
       <div class="data-head">
         <h2><span class="rec-dot" id="rec-dot" aria-hidden="true"></span> Video for AI</h2>
       </div>
+      <div class="field"><label class="toggle" for="rec-on"><input id="rec-on" type="checkbox"><span>Record runs</span></label></div>
       <p class="note" id="rec-status" aria-live="polite"></p>
       <button id="rec-dl" type="button" disabled>Download .webm</button>
     </section>
@@ -468,7 +469,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   const methodFor = id => METHODS[id] || TRACK_METHOD;
 
   // ---- settings ----
-  const cfg = { game: 'warzone', dpi: 5200, startSens: 1.5, fov: 120, perBlock: 10, gap: 350, mode: 'full', method: 'throughput', padCm: 45, fastCm: 12, trackSpeed: 'real', search: 'bracket', excludeRT: true, enforceErgo: true, practice: false };
+  const cfg = { game: 'warzone', dpi: 5200, startSens: 1.5, fov: 120, perBlock: 10, gap: 350, mode: 'full', method: 'throughput', padCm: 45, fastCm: 12, trackSpeed: 'real', search: 'bracket', excludeRT: true, enforceErgo: true, practice: false, record: false };
   let scale = 1;                            // browser movement units per real mouse count
   let savedAll = {};                        // { warzone: {...}, valorant: {...} }
   let saved = {};                           // current game's { flick, track, micro } latest result + raw data per drill
@@ -476,7 +477,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     const s3 = JSON.parse(localStorage.getItem('wzcal3') || 'null');
     const old = JSON.parse(localStorage.getItem('wzcal') || 'null');
     const src = s3 || old;
-    if (src) { const c = src.cfg || {}; ['game', 'dpi', 'fov', 'gap', 'padCm', 'fastCm', 'mode', 'method', 'trackSpeed', 'search', 'excludeRT', 'enforceErgo', 'practice'].forEach(k => { if (c[k] !== undefined) cfg[k] = c[k]; });
+    if (src) { const c = src.cfg || {}; ['game', 'dpi', 'fov', 'gap', 'padCm', 'fastCm', 'mode', 'method', 'trackSpeed', 'search', 'excludeRT', 'enforceErgo', 'practice', 'record'].forEach(k => { if (c[k] !== undefined) cfg[k] = c[k]; });
       // Older versions had Practice as a Test tab with its own drill picker.
       if (cfg.mode === 'practice') { cfg.mode = DRILLS[c.practiceDrill] ? c.practiceDrill : 'flick'; cfg.practice = true; }
       scale = src.scale || 1; }
@@ -495,6 +496,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
   if (cfg.search !== 'bayes') cfg.search = 'bracket';
   $('search').value = cfg.search; $('rt').checked = cfg.excludeRT !== false; $('ergo').checked = cfg.enforceErgo !== false;
   $('practice').checked = !!cfg.practice;
+  $('rec-on').checked = !!cfg.record;
   for (const [name, val] of [['mode', cfg.mode], ['game', cfg.game]]) {
     const el = document.querySelector(`input[name="${name}"][value="${val}"]`);
     if (el) el.checked = true;
@@ -518,6 +520,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
     cfg.search = $('search').value === 'bayes' ? 'bayes' : 'bracket';
     cfg.excludeRT = $('rt').checked;
     cfg.enforceErgo = $('ergo').checked;
+    cfg.record = $('rec-on').checked;
     // Practice reuses the Test selection as its drill; a full test can't be practiced, so it falls back to Flicks.
     cfg.practice = $('practice').checked;
     $('m-full').disabled = cfg.practice;
@@ -1561,8 +1564,8 @@ Field definitions are in the "definitions" section of the JSON.`;
     $('export-note').textContent = 'Saved to your downloads.';
   });
 
-  // ---- video recording (automatic) ----
-  // Every run is recorded: tests from Start until they finish, practice from Start until Esc.
+  // ---- video recording (opt-in) ----
+  // With "Record runs" on, each run is recorded: tests from Start until they finish, practice from Start until Esc.
   // Pausing a test with Esc pauses the video, so the clip has no dead time and timestamps stay true.
   // The range is copied into a 640×360 canvas on a steady 30 fps clock and encoded as low-bitrate
   // WebM. The HUD is in the frame and a timer is burned into the corner; trial.videoT and
@@ -1581,12 +1584,13 @@ Field definitions are in the "definitions" section of the JSON.`;
     if (!recMime()) { $('rec-status').textContent = 'This browser can’t record WebM video. Use Chrome, Edge or Firefox.'; return; }
     if (rec) $('rec-status').textContent = `${rec.pauseAt ? 'Paused' : 'Recording'} ${fmtTime(recElapsed(rec))} · ${fmtSize(rec.bytes)}`;
     else if (recBlob) $('rec-status').textContent = `Last run: ${fmtTime(recInfo.durationMs)} · ${fmtSize(recBlob.size)}. Download it, then Build export so the timestamps match.`;
-    else $('rec-status').textContent = 'Every run is recorded automatically: 640×360, 30 fps, about 3–4 MB a minute.';
+    else if (cfg.record) $('rec-status').textContent = 'Each run will be recorded from Start: 640×360, 30 fps, about 3–4 MB a minute.';
+    else $('rec-status').textContent = 'Recording is off. Turn it on to record each run (only the firing range, kept in this tab until you download it).';
   }
   // Own steady frame clock, so the video keeps a constant 30 fps whatever the screen refresh rate.
   const startClock = r => { r.timer = setInterval(() => recFrame(performance.now()), 1000 / REC_FPS); };
   function startRec() {
-    const mimeType = recMime(); if (!mimeType) return;
+    const mimeType = recMime(); if (!mimeType || !cfg.record) return;
     if (rec) stopRec();
     const mr = new MediaRecorder(recCanvas.captureStream(REC_FPS), { mimeType, videoBitsPerSecond: REC_BPS });
     const r = { mr, chunks: [], t0: performance.now(), pausedMs: 0, pauseAt: 0, startedAt: new Date().toISOString(), bytes: 0, mimeType };
@@ -1632,6 +1636,8 @@ Field definitions are in the "definitions" section of the JSON.`;
     recCtx.fillStyle = 'rgba(0,0,0,.6)'; recCtx.fillRect(4, REC_H - 20, 70, 16);
     recCtx.fillStyle = '#ec6a52'; recCtx.fillText(`● ${(recElapsed(rec, now) / 1000).toFixed(1)}s`, 8, REC_H - 6);
   }
+  // Turning recording off mid-run stops it; turning it on takes effect from the next Start.
+  $('rec-on').addEventListener('change', () => { readInputs(); persist(); if (!cfg.record) stopRec(); recUI(); });
   $('rec-dl').addEventListener('click', () => {
     if (!recBlob) return;
     saveFile(`sens-run-${stamp()}.webm`, recBlob);
