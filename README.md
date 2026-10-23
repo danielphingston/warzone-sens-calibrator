@@ -63,6 +63,38 @@ Recording is off by default. Turn on **Record runs** in the sidebar and each run
 
 "Build export" produces an analysis prompt plus every block and target with raw readings and field definitions, ready to paste into an AI. An optional "About you" note is added to the prompt. Each drill carries the settings it was run with (`testedWith`), since drills can come from different sessions, and each block has `t`, seconds since the session started.
 
+## Development
+
+A static site with no build step: `index.html` loads `css/app.css` and the ES modules under `src/`. Browsers don't load modules from `file://`, so serve the folder to run it locally:
+
+```sh
+python3 -m http.server 8000     # then open http://localhost:8000
+npm test                        # unit tests for src/core and the registries (Node 18+, no dependencies)
+```
+
+### Layout
+
+| Path | What lives there |
+|---|---|
+| `src/config.js` | Tunable constants (warm-up targets, bracket multipliers, tracking timings, jitter) |
+| `src/registry/` | **Extension points**: `games.js`, `drills.js`, `methods.js` (scoring), `tracking-presets.js` |
+| `src/core/` | Pure maths, no DOM: `stats`, `linalg`, `fit`, `search` (bracket + Bayesian), `units`, `analysis`, `blend`, `geometry` |
+| `src/app/` | `state.js` (settings + shared runtime state), `storage.js`, `events.js` (event bus), `session.js` (the drill engine) |
+| `src/ui/` | Everything that touches the page: `settings`, `overlay`, `input`, `arena` (canvas), `results`, `charts`, `export`, `recorder` |
+| `src/main.js` | Entry point: loads settings, wires modules, runs the frame loop |
+| `tests/` | `node:test` unit tests |
+
+`core/` and `registry/` never import from `app/` or `ui/`, so they stay testable in Node. The engine (`app/session.js`) never touches the page: it updates `app` state and emits events (`results`, `overlay`, `session:start`, `drill:end`, `session:end`, `lock`) that UI modules subscribe to.
+
+### Extending
+
+- **Game:** add an entry to `src/registry/games.js` (turn rate, sens decimals, fixed FOV, blend weights, where to enter the sens). The game picker, conversions, blend and export pick it up.
+- **Drill:** add an entry to `src/registry/drills.js`. A `targets` drill only needs `spawn(cam)`, `radius` and `timeout`; it then appears in the Test picker, the full test (`inFullTest`), the results cards and the export. Give it a weight in each game's `weights` for it to count toward the overall sens.
+- **Scoring method:** add an entry to `src/registry/methods.js` with `score(trials, { excludeRT })` (bracket methods) or `next`/`final` (adaptive methods). It shows up in the settings menu with its explainer card.
+- **Search strategy:** add an entry to `SEARCHES` in `src/core/search.js` with `plan()` and, for adaptive searches, `next()`.
+- **Tracking preset:** add an entry to `src/registry/tracking-presets.js`.
+- **New panel or feature reacting to runs:** subscribe to the event bus in `src/app/events.js` instead of editing the engine.
+
 ## References
 
 - MacKenzie, Fitts' law and ISO 9241-9: https://www.yorku.ca/mack/UCLAN2018/FittsLaw.pdf

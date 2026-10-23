@@ -1,0 +1,10 @@
+{
+  "name": "warzone-sens-calibrator",
+  "private": true,
+  "type": "module",
+  "description": "Static site: no build step. These scripts only run the tests.",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "serve": "python3 -m http.server 8000"
+  }
+}
